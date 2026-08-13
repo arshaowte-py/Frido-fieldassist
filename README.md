@@ -22,6 +22,25 @@ Multiple order dumps in `raw/` are concatenated — Order No is per product line
 order, so the ETL does not dedupe on it. FieldAssist exports pulled on non-overlapping
 date ranges will not overlap on Order No; the ETL warns if any do.
 
+## Product Performance exports
+
+All three Flexible Report exports share the same filename prefix, so `enrich.py` tells them
+apart by header shape rather than name — drop them in `raw/` and they sort themselves out:
+
+| shape | header marker | feeds |
+|---|---|---|
+| rep × SKU × month pivot of UPC | `L2Position User` | Assortment tab, manager scorecard |
+| one row per visit line | `Visit Id` | Distributors tab |
+| shop channel × category totals | `Shop Channel` | reconciliation only |
+
+Each block is optional. If an export is missing, its tab does not render and the rest of
+the dashboard is unaffected.
+
+**Pull these with the position filter cleared.** The first set covered 51 of 124 reps and
+about 47% of booked value, which is why the Assortment and Distributors tabs carry a
+partial-scope caveat. The dashboard states its own coverage on those tabs, so a filtered
+export is safe to ship — it is just narrower than it looks.
+
 ## Widening the date range
 
 Add the months to `PERIODS` in `etl.py`:
@@ -35,7 +54,8 @@ PERIODS = ["April", "May", "June", "July", "August"]
 | file | role |
 |---|---|
 | `raw/` | untouched FieldAssist exports (gitignored) |
-| `etl.py` | reads every export, emits `aggregates.json` (~45 KB) |
+| `etl.py` | reads every export, emits `aggregates.json` |
+| `enrich.py` | the three Product Performance reports → assortment, hierarchy, distributors |
 | `template.html` | markup + CSS + JS, `/*__DATA__*/` is the injection point |
 | `build.py` | substitutes JSON into template |
 | `dist/index.html` | the deployable artefact |
@@ -52,6 +72,9 @@ PERIODS = ["April", "May", "June", "July", "August"]
 - **Outlet base** — Outlet Dump GeoHierarchy deduplicated on `Outlet Erp Id`.
 - **Indicative gap value** — zone sales × (national category share − zone category share).
   A prompt for the sales team, not a forecast. Only zones holding ≥3% of national sales.
+- **UPC** — a unique productive call: one outlet buying one SKU inside one month. Counts
+  distribution width, not value.
+- **Reordered** — an outlet with more than one separate billed visit inside the window.
 
 ## Validation
 
@@ -61,5 +84,9 @@ Productivity's own PC/TC to within 1%.
 
 ## Working agreement
 
-All git commands run by the repo owner. Claude Code does not run `git checkout`, `add`,
-`commit`, `push`, `status`, `restore`, `stash` or `diff`.
+Claude Code commits and pushes to its designated feature branch. It does not push to
+`main` or open a pull request unless asked — merges are the repo owner's call.
+
+Regenerate `aggregates.json` and `dist/index.html` in the same commit as any change to
+`etl.py`, `enrich.py` or `template.html`, so the deployed artefact never trails the source
+that built it. Run `node test.js` before pushing.

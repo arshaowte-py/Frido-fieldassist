@@ -9,6 +9,7 @@ Default SRC_DIR = ./raw
 import sys, os, glob, json, re
 import pandas as pd
 import numpy as np
+from enrich import enrich
 
 SRC = sys.argv[1] if len(sys.argv) > 1 else "./raw"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "./aggregates.json"
@@ -407,9 +408,15 @@ prods = (lines.groupby("Product")
          .agg(net=("NetValue", "sum"), qty=("Qty ( StdUnit )", "sum"),
               outlets=("Outlet Erp Id", "nunique"), lines=("Product", "count"))
          .reset_index().sort_values("net", ascending=False))
+prod_cat = lines.drop_duplicates("Product").set_index("Product")["PrimaryCategory"].to_dict()
 top_products = [{"name": r.Product, "net": float(r.net), "qty": float(r.qty),
                  "outlets": int(r.outlets), "lines": int(r.lines)}
                 for r in prods.head(20).itertuples()]
+# a searchable long tail — the two 20-row cards only ever show the extremes
+all_products = [{"name": r.Product, "cat": prod_cat.get(r.Product, "Uncategorised"),
+                 "net": float(r.net), "qty": float(r.qty),
+                 "outlets": int(r.outlets), "lines": int(r.lines)}
+                for r in prods[prods["net"] > 0].head(250).itertuples()]
 tail = prods[prods["net"] > 0].tail(20).sort_values("net")
 tail_products = [{"name": r.Product, "net": float(r.net), "qty": float(r.qty),
                   "outlets": int(r.outlets), "lines": int(r.lines)}
@@ -446,6 +453,7 @@ payload = {
         "whitespace": whitespace[:24],
         "top_products": top_products,
         "tail_products": tail_products,
+        "all_products": all_products,
         "divisions": divisions,
         "cat_by_type": cat_by_type,
         "types": type_names,
@@ -466,6 +474,11 @@ payload = {
         "reason_blank": int((ns["reason"] == "Not recorded").sum()),
     },
 }
+
+print("reading product performance exports ...")
+sku_cat = (lines.drop_duplicates("Product")
+                .set_index("Product")["PrimaryCategory"].to_dict())
+payload = enrich(SRC, payload, sku_cat)
 
 with open(OUT, "w") as f:
     json.dump(payload, f, separators=(",", ":"), default=float)
