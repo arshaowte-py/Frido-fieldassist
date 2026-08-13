@@ -49,6 +49,54 @@ Add the months to `PERIODS` in `etl.py`:
 PERIODS = ["April", "May", "June", "July", "August"]
 ```
 
+## Colour and theme
+
+Every colour on the page is a CSS custom property, so light/dark is a token swap
+with no re-render. The toggle sits in the masthead; it writes `frido-theme` to
+localStorage and stamps `data-theme` on `<html>`. No stored value means "follow the
+OS", and an inline script in `<head>` applies the choice before first paint so the
+page never flashes the wrong mode.
+
+**To match brand colour, edit only the `FRIDO BRAND` block** at the top of
+`template.html` — three hexes (`--brand-ink`, `--brand`, `--brand-warm`). The
+placeholders there are a reasonable stand-in, not the official values; swap in the
+real ones and nothing else needs to change.
+
+The data-viz roles are a separate, validated set — light and dark steps chosen for
+their own surface rather than flipped:
+
+| role | meaning | light | dark |
+|---|---|---|---|
+| `--gain` | converted / positive | `#0F7D52` | `#2CA277` |
+| `--loss` | shop-related issue | `#B03A22` | `#DE6244` |
+| `--cool` | company / distributor / product | `#2F72BC` | `#5497DE` |
+| `--warn` | competitor | `#CE8C00` | `#C98500` |
+| `--neut` | unexplained / misc | `#B7BEC5` | `#5A646E` |
+| `--seq` | sequential magnitude (matrix) | `#2F72BC` | `#5497DE` |
+
+Two constraints are load-bearing, not cosmetic:
+
+- **`ROLE_ORDER` in `template.html` keeps `loss` and `warn` apart.** Ribbon segments
+  are sorted into that order so the two warm hues are never adjacent — that pair is
+  the one that fails the dark-mode colourblind separation gate. Reordering it
+  without re-validating will quietly break the ribbon for deuteranopic readers.
+- **`--t1` is a single tint step, not a ramp.** Same-category segments alternate
+  between `--t0` and `--t1`; the 2px surface gap does the rest. A deeper ramp drops
+  at least one role's in-segment label under 4.5:1 in one of the two themes.
+
+To re-validate after any change, run the palette through the checker
+(`worst adjacent CVD ΔE ≥ 8`, `normal-vision ΔE ≥ 15`, contrast ≥ 3:1 vs surface):
+
+```
+node validate_palette.js "#0F7D52,#B03A22,#2F72BC,#CE8C00" --mode light --surface "#FFFFFF"
+node validate_palette.js "#2CA277,#DE6244,#5497DE,#C98500" --mode dark  --surface "#151A21"
+```
+
+Dark passes every check. Light carries two documented WARNs — `loss`↔`gain` CVD 6.6
+and amber's 2.85:1 contrast — both relieved by what the ribbon already ships: a
+direct percentage label in each segment, a key naming every segment, and the same
+numbers available as a table.
+
 ## Files
 
 | file | role |

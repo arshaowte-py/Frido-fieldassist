@@ -3,46 +3,138 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Frido GT Field Intelligence — Apr–Jun 2026</title>
+<title>Frido GT Field Intelligence — Apr–Aug 2026</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0E1B2E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+/* set the theme before first paint so the page never flashes the wrong mode */
+(function(){try{var t=localStorage.getItem('frido-theme');
+  if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
 <style>
 :root{
-  --ink:#12181D; --paper:#F5F6F2; --card:#FFFFFF; --rule:#E2E4DE;
-  --muted:#6B7580; --faint:#98A0A8;
-  --gain:#0E6F5C; --gain-b:#DCEDE8;
-  --loss:#B4472F; --loss-b:#F6E4DF;
-  --warn:#9A6B08; --warn-b:#F7EDD8;
-  --cool:#3C5A78; --cool-b:#E2E9F0;
-  --disp:'IBM Plex Sans Condensed',system-ui,sans-serif;
-  --body:'IBM Plex Sans',system-ui,sans-serif;
-  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme:light;
+
+  /* ═══════════ FRIDO BRAND — the only block to edit to match brand colour ═══════════
+     Replace these three with the official Frido hexes. Everything else on the page
+     derives from them or from the validated data-viz roles below.                  */
+  --brand-ink:#0E1B2E;      /* deep navy — masthead, hero tile           */
+  --brand:#0F7D52;          /* Frido green — active states, primary rule */
+  --brand-warm:#E2673C;     /* coral — focus rings, accent hairline      */
+  /* ══════════════════════════════════════════════════════════════════════════════ */
+
+  /* surfaces & ink */
+  --paper:#F7F6F3; --card:#FFFFFF; --rule:#E4E3DD; --rule-soft:#EFEEE9;
+  --ink:#141A21; --muted:#5C6670; --faint:#8B939B;
+  --track:#ECEBE6;
+  --shadow:0 1px 2px rgba(14,27,46,.05), 0 1px 8px rgba(14,27,46,.04);
+
+  /* data-viz roles — validated light steps (see README § Colour) */
+  --gain:#0F7D52; --gain-b:#E2EFE9; --gain-on:#FFFFFF;
+  --loss:#B03A22; --loss-b:#F8E6E1; --loss-on:#FFFFFF;
+  --cool:#2F72BC; --cool-b:#E5ECF6; --cool-on:#FFFFFF;
+  --warn:#CE8C00; --warn-b:#FAF0DA; --warn-on:#2A1E00;
+  --neut:#B7BEC5; --neut-b:#F0F1F2; --neut-on:#1B2026;
+  --seq:#2F72BC;            /* sequential hue — category × region matrix */
+
+  /* Same-category ribbon segments alternate between two shades so a run of them
+     stays readable; the 2px surface gap does the rest of the separating.
+     Deliberately ONE step, not a ramp: deeper steps push the label contrast of
+     at least one role under 4.5:1 in one of the two themes. */
+  --t0:1; --t1:.92;
+
+  --disp:'Plus Jakarta Sans',system-ui,sans-serif;
+  --body:'Plus Jakarta Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+
+/* Dark steps are selected for the dark surface, not flipped from light.
+   Declared under both scopes: the media query follows the OS, the data-theme
+   scope lets the in-page toggle win in either direction. */
+@media(prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme:dark;
+    --brand-ink:#0A1220; --brand:#2CA277; --brand-warm:#F0805A;
+    --paper:#0D1117; --card:#151A21; --rule:#252D38; --rule-soft:#1C232C;
+    --ink:#EAEEF2; --muted:#9AA5B1; --faint:#6E7A87;
+    --track:#222A34;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 1px 8px rgba(0,0,0,.25);
+    --gain:#2CA277; --gain-b:#122A22; --gain-on:#08130E;
+    --loss:#DE6244; --loss-b:#2E1913; --loss-on:#1A0A05;
+    --cool:#5497DE; --cool-b:#16202E; --cool-on:#06101E;
+    --warn:#C98500; --warn-b:#2A1F08; --warn-on:#1C1200;
+    --neut:#5A646E; --neut-b:#1B222A; --neut-on:#EAEEF2;
+    --seq:#5497DE;
+    --t0:1; --t1:1.07;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --brand-ink:#0A1220; --brand:#2CA277; --brand-warm:#F0805A;
+  --paper:#0D1117; --card:#151A21; --rule:#252D38; --rule-soft:#1C232C;
+  --ink:#EAEEF2; --muted:#9AA5B1; --faint:#6E7A87;
+  --track:#222A34;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 1px 8px rgba(0,0,0,.25);
+  --gain:#2CA277; --gain-b:#122A22; --gain-on:#08130E;
+  --loss:#DE6244; --loss-b:#2E1913; --loss-on:#1A0A05;
+  --cool:#5497DE; --cool-b:#16202E; --cool-on:#06101E;
+  --warn:#C98500; --warn-b:#2A1F08; --warn-on:#1C1200;
+  --neut:#5A646E; --neut-b:#1B222A; --neut-on:#EAEEF2;
+  --seq:#5497DE;
+  --t0:1; --t1:1.07;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);
-  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-h1,h2,h3{font-family:var(--disp);font-weight:600;margin:0;letter-spacing:-.01em}
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  transition:background-color .18s ease,color .18s ease}
+h1,h2,h3{font-family:var(--disp);font-weight:700;margin:0;letter-spacing:-.018em}
 a{color:inherit}
 .mono{font-family:var(--mono)}
 .wrap{max-width:1280px;margin:0 auto;padding:0 22px}
 
 /* ---------- masthead ---------- */
 header{border-bottom:1px solid var(--rule);background:var(--card);position:sticky;top:0;z-index:40}
-.mast{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:15px 0 12px}
-.mast h1{font-size:20px;letter-spacing:-.02em}
+/* the brand hairline: Frido green running the width of the masthead */
+header::before{content:"";display:block;height:3px;
+  background:linear-gradient(90deg,var(--brand) 0%,var(--brand) 38%,var(--brand-warm) 100%)}
+.mast{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 0 12px}
+.mast h1{font-size:20px;letter-spacing:-.025em;font-weight:800}
 .mast .sub{font-family:var(--mono);font-size:11px;color:var(--muted);
   text-transform:uppercase;letter-spacing:.09em}
-.mast .right{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint)}
+.mast .right{margin-left:auto;display:flex;align-items:center;gap:12px;
+  font-family:var(--mono);font-size:11px;color:var(--faint)}
+/* brand mark — the Frido "f" in a rounded tile */
+.mark{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;
+  background:var(--brand);color:#fff;font-family:var(--disp);font-weight:800;
+  font-size:17px;line-height:1;letter-spacing:-.04em;box-shadow:var(--shadow)}
 nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
 nav::-webkit-scrollbar{display:none}
 nav button{font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;
   background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
   padding:9px 13px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s}
 nav button:hover{color:var(--ink)}
-nav button[aria-selected="true"]{color:var(--ink);border-color:var(--ink)}
-nav button:focus-visible{outline:2px solid var(--cool);outline-offset:-2px}
+nav button[aria-selected="true"]{color:var(--ink);border-color:var(--brand)}
+nav button:focus-visible{outline:2px solid var(--brand-warm);outline-offset:-2px}
+
+/* ---------- theme toggle ---------- */
+.theme-btn{display:grid;place-items:center;width:32px;height:32px;flex:none;cursor:pointer;
+  background:var(--card);border:1px solid var(--rule);border-radius:8px;color:var(--muted);
+  padding:0;transition:color .15s,border-color .15s,background .15s}
+.theme-btn:hover{color:var(--ink);border-color:var(--faint)}
+.theme-btn:focus-visible{outline:2px solid var(--brand-warm);outline-offset:2px}
+.theme-btn svg{width:17px;height:17px;display:block}
+/* one icon per mode — the sun shows in dark mode (click to go light) and vice versa */
+.theme-btn .i-moon{display:block} .theme-btn .i-sun{display:none}
+:root[data-theme="dark"] .theme-btn .i-moon{display:none}
+:root[data-theme="dark"] .theme-btn .i-sun{display:block}
+@media(prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])) .theme-btn .i-moon{display:none}
+  :root:where(:not([data-theme="light"])) .theme-btn .i-sun{display:block}
+}
 
 main{padding:26px 0 70px}
 .panel[hidden]{display:none}
@@ -64,23 +156,24 @@ section{margin-bottom:34px}
 .kpi{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:13px 15px 14px}
 .kpi .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--muted);display:block;margin-bottom:5px}
-.kpi .val{font-family:var(--disp);font-size:31px;font-weight:600;line-height:1;
-  letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.kpi .val{font-family:var(--disp);font-size:32px;font-weight:800;line-height:1;
+  letter-spacing:-.035em;font-variant-numeric:tabular-nums}
 .kpi .val .u{font-size:15px;font-weight:500;color:var(--muted);margin-left:2px}
 .kpi .fo{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.35}
-.kpi.hero{background:var(--ink);border-color:var(--ink);color:#fff}
-.kpi.hero .lab{color:#9AA6AE}
-.kpi.hero .fo{color:#A9B4BB}
+.kpi.hero{background:var(--brand-ink);border-color:var(--brand-ink);color:#fff;
+  background-image:linear-gradient(135deg,var(--brand-ink) 0%,color-mix(in srgb,var(--brand-ink) 82%,var(--brand)) 100%)}
+.kpi.hero .lab{color:#9DB3C4}
+.kpi.hero .fo{color:#B4C4D2}
 
 /* ---------- signature: conversion ribbon ---------- */
 .ribbon-wrap{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:18px 18px 15px}
 .ribbon{display:flex;height:60px;width:100%;border-radius:2px;overflow:hidden;
-  border:1px solid rgba(0,0,0,.07)}
+  border:1px solid var(--rule)}
 .ribbon div{position:relative;transition:filter .15s}
 .ribbon div:hover{filter:brightness(1.12)}
 .ribbon .seg-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-family:var(--mono);font-size:10px;color:#fff;letter-spacing:.03em;
-  text-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none;padding:0 4px;overflow:hidden}
+  font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.03em;
+  pointer-events:none;padding:0 4px;overflow:hidden}
 .ribbon-key{display:flex;flex-wrap:wrap;gap:5px 20px;margin-top:13px}
 .ribbon-key span{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:7px}
 .ribbon-key i{width:11px;height:11px;border-radius:2px;display:inline-block;flex:none}
@@ -92,7 +185,7 @@ section{margin-bottom:34px}
 .bar{display:grid;grid-template-columns:minmax(112px,auto) 1fr minmax(56px,auto);
   gap:11px;align-items:center;font-size:13px}
 .bar .nm{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bar .tr{background:#EDEEEA;height:15px;border-radius:2px;overflow:hidden}
+.bar .tr{background:var(--track);height:15px;border-radius:2px;overflow:hidden}
 .bar .fl{height:100%;background:var(--cool);border-radius:2px}
 .bar .vv{font-family:var(--mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
 .fl.gain{background:var(--gain)} .fl.loss{background:var(--loss)}
@@ -104,9 +197,9 @@ table{border-collapse:collapse;width:100%;font-size:13px}
 th{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
   color:var(--muted);text-align:left;padding:9px 11px;border-bottom:1px solid var(--rule);
   white-space:nowrap;background:var(--card);position:sticky;top:0;font-weight:500}
-td{padding:8px 11px;border-bottom:1px solid #EEEFEB;white-space:nowrap}
+td{padding:8px 11px;border-bottom:1px solid var(--rule-soft);white-space:nowrap}
 tbody tr:last-child td{border-bottom:0}
-tbody tr:hover{background:#FAFAF7}
+tbody tr:hover{background:var(--rule-soft)}
 td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px}
 td.nm{font-weight:500;max-width:230px;overflow:hidden;text-overflow:ellipsis}
 .sortable{cursor:pointer;user-select:none}
@@ -120,7 +213,8 @@ td.nm{font-weight:500;max-width:230px;overflow:hidden;text-overflow:ellipsis}
 /* ---------- matrix ---------- */
 .matrix td.cell{text-align:right;font-family:var(--mono);font-size:12px;position:relative;
   font-variant-numeric:tabular-nums}
-.matrix td.cell .bg{position:absolute;inset:2px;border-radius:2px;background:var(--gain);opacity:0}
+.matrix td.cell .bg{position:absolute;inset:2px;border-radius:2px;background:var(--seq);opacity:0}
+/* magnitude is sequential — one hue, light to dark. Never the status green. */
 .matrix td.cell span{position:relative}
 
 /* ---------- callout ---------- */
@@ -133,8 +227,8 @@ td.nm{font-weight:500;max-width:230px;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- misc ---------- */
 .stat-row{display:flex;gap:26px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
-.stat-row b{font-family:var(--disp);font-size:19px;color:var(--ink);font-weight:600;
-  display:block;letter-spacing:-.02em}
+.stat-row b{font-family:var(--disp);font-size:20px;color:var(--ink);font-weight:800;
+  display:block;letter-spacing:-.03em}
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:13px}
 .filters label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--muted)}
@@ -162,8 +256,23 @@ footer{border-top:1px solid var(--rule);padding:20px 0 40px;font-size:12.5px;col
 <header>
   <div class="wrap">
     <div class="mast">
+      <span class="mark" aria-hidden="true">f</span>
       <h1>Frido GT Field Intelligence</h1>
       <span class="sub" id="scope"></span>
+      <div class="right">
+        <button class="theme-btn" id="themeBtn" type="button"
+                aria-label="Switch between light and dark theme">
+          <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+          </svg>
+          <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2"/>
+            <path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <nav role="tablist" id="nav"></nav>
   </div>
@@ -275,52 +384,72 @@ function ftableDraw(id){
   });
 }
 
-/* ---------------- signature ribbon ---------------- */
-/* colour encodes the reason CATEGORY, so the eye groups causes not ranks */
-const CAT_COLOR = {
-  'SHOP RELATED ISSUE':'#B4472F',
-  'MORE FACTORS':'#6E7A85',
-  'COMPETITOR RELATED ISSUE':'#9A6B08',
-  'COMPANY RELATED ISSUE':'#3C5A78',
-  'DISTRIBUTOR RELATED ISSUE':'#3C5A78',
-  'PRODUCT RELATED ISSUE':'#3C5A78',
-  'Not recorded':'#B9BEC2'
+/* ---------------- signature ribbon ----------------
+   Colour encodes the reason CATEGORY, so the eye groups causes not ranks.
+   Each category maps to a themed role token rather than a literal hex, so the
+   ribbon re-colours with the theme without a re-render.
+
+   ROLE_ORDER is a CVD-safety mechanism, not cosmetic: segments are sorted into
+   this order so the two warm hues (loss/rust and warn/amber) are never adjacent.
+   That adjacency is the one pair that fails the dark-mode separation gate.
+   Re-run scripts/validate_palette.js before changing it.                      */
+const CAT_ROLE = {
+  'SHOP RELATED ISSUE':'loss',
+  'COMPANY RELATED ISSUE':'cool',
+  'DISTRIBUTOR RELATED ISSUE':'cool',
+  'PRODUCT RELATED ISSUE':'cool',
+  'COMPETITOR RELATED ISSUE':'warn',
+  'MORE FACTORS':'neut',
+  'Not recorded':'neut'
 };
-const lum = hex => {
-  const n = parseInt(hex.slice(1),16);
-  return (0.299*(n>>16) + 0.587*((n>>8)&255) + 0.114*(n&255))/255;
-};
+const ROLE_ORDER = ['gain','loss','cool','warn','neut'];
+
 function ribbon(){
   const total = D.kpis.tc, pcv = D.kpis.pc;
   const top = D.nosale.by_reason.slice(0,7);
   const named = top.reduce((a,b) => a + b.n, 0);
   const other = D.nosale.total - named;
-  const shade = {};
-  const segs = [{k:'Order placed', n:pcv, c:'#0E6F5C', g:'Converted'}]
-    .concat(top.map(r => {
-      const base = CAT_COLOR[r.cat] || '#8B95A0';
-      shade[base] = (shade[base]||0) + 1;
-      return {k:r.name, n:r.n, c:base, g:r.cat, tint:shade[base]-1};
-    }))
-    .concat(other > 0 ? [{k:'All other reasons', n:other, c:'#C4C9CD', g:'Mixed'}] : []);
 
-  const groups = [...new Set(segs.map(s => s.g))];
+  let segs = [{k:'Order placed', n:pcv, role:'gain', g:'Converted'}]
+    .concat(top.map(r => ({k:r.name, n:r.n, role:CAT_ROLE[r.cat] || 'neut', g:r.cat})))
+    .concat(other > 0 ? [{k:'All other reasons', n:other, role:'neut', g:'Mixed'}] : []);
+
+  /* group by role in the validated order, biggest first inside each group */
+  segs.sort((a,b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || b.n - a.n);
+  const shade = {};
+  segs.forEach(s => { shade[s.role] = (shade[s.role]||0) + 1; s.tint = shade[s.role]-1; });
+
+  const fill = s => `background:var(--${s.role});filter:brightness(var(--t${s.tint % 2}))`;
   return `<div class="ribbon-wrap">
-    <div class="ribbon">${segs.map(s => {
+    <div class="ribbon">${segs.map((s,i) => {
       const w = s.n/total*100;
-      const dark = lum(s.c) < 0.55;
-      return `<div style="width:${w.toFixed(2)}%;background:${s.c};
-        filter:brightness(${1 + Math.min(s.tint||0,3)*0.07})"
+      return `<div style="width:${w.toFixed(2)}%;${fill(s)}${i < segs.length-1 ? ';box-shadow:inset -2px 0 0 var(--card)' : ''}"
         title="${esc(s.k)} — ${cm(s.n)} visits, ${w.toFixed(1)}% of all visits (${esc(s.g)})">
-        ${w > 8 ? `<span class="seg-label" style="color:${dark?'#fff':'#22282D'};
-          text-shadow:${dark?'0 1px 2px rgba(0,0,0,.35)':'none'}">${w.toFixed(0)}%</span>` : ''}
+        ${w > 8 ? `<span class="seg-label" style="color:var(--${s.role}-on)">${w.toFixed(0)}%</span>` : ''}
       </div>`; }).join('')}</div>
     <div class="ribbon-key">${segs.map(s => `
-      <span><i style="background:${s.c};filter:brightness(${1 + Math.min(s.tint||0,3)*0.07})"></i>${esc(s.k)} · ${cm(s.n)}</span>`).join('')}</div>
+      <span><i style="${fill(s)}"></i>${esc(s.k)} · ${cm(s.n)}</span>`).join('')}</div>
     <div class="ribbon-cap">Every one of the ${cm(total)} visits logged in this range, in proportion.
-      Teal booked an order. Everything to its right is a visit the field force made and recorded a reason for
-      leaving empty-handed — rust is a problem at the shop, amber is a competitor, slate is everything else.</div>
+      Green booked an order. Everything to its right is a visit the field force made and recorded a reason
+      for leaving empty-handed — ${legend(segs)}.</div>
   </div>`;
+}
+
+/* Describe only the colours actually on screen. Which reasons make the top seven
+   varies with the data, so a fixed sentence eventually names a colour that isn't
+   there — it previously explained "blue" in a range with no company-side reason. */
+function legend(segs){
+  const gloss = {
+    loss:'rust is a problem at the shop',
+    cool:'blue is ours to fix (company, distributor or product)',
+    warn:'amber is a competitor',
+    neut:'grey is unexplained'
+  };
+  const present = ROLE_ORDER.filter(r => r !== 'gain' && segs.some(s => s.role === r));
+  const parts = present.map(r => gloss[r]);
+  return parts.length > 1
+    ? parts.slice(0,-1).join(', ') + ' and ' + parts[parts.length-1]
+    : (parts[0] || 'each colour is a reason category');
 }
 
 /* ---------------- tabs ---------------- */
@@ -519,7 +648,7 @@ function tabConversion(){
             `<span class="pill ${r.pct<85?'g':'l'}">${pc(r.pct)}</span>`]))}</div>
       <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Top reason by zone</h3>
         <div class="bars">${n.reason_by_zone.slice(0,6).map(z => `
-          <div style="padding:7px 0;border-bottom:1px solid #EEEFEB">
+          <div style="padding:7px 0;border-bottom:1px solid var(--rule-soft)">
             <div style="font-weight:600;font-size:13px">${esc(z.zone)}</div>
             <div class="sm">${z.top.map(t => `${esc(t.name)} <span class="mono">${cm(t.n)}</span>`).join(' · ')}</div>
           </div>`).join('')}</div></div>
@@ -748,7 +877,7 @@ function tabAssortment(){
 
   const mv = (rows, cls) => `<div class="bars">${rows.map(r => `
     <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;
-                padding:7px 0;border-bottom:1px solid #EEEFEB">
+                padding:7px 0;border-bottom:1px solid var(--rule-soft)">
       <div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
            title="${esc(r.name)}">${esc(r.name)}</div>
       <div class="mono sm">${cm(r.first)} → ${cm(r.last)}</div>
@@ -950,7 +1079,7 @@ function tabNotes(){
          'Populate ProductDivision, or confirm Primary Category is the intended grouping',
          'Decide whether doctor visits should be scored on order booking at all',
          'Confirm whether MT should live in FieldAssist or stay in another system'
-        ].map((t,i) => `<div style="display:flex;gap:11px;padding:7px 0;border-bottom:1px solid #EEEFEB">
+        ].map((t,i) => `<div style="display:flex;gap:11px;padding:7px 0;border-bottom:1px solid var(--rule-soft)">
           <span class="mono" style="color:var(--faint);flex:none">${String(i+1).padStart(2,'0')}</span>
           <span style="font-size:13.5px">${t}</span></div>`).join('')}
     </div></div></section>`;
@@ -987,6 +1116,27 @@ function show(id){
   window.scrollTo({top:0, behavior:'instant'});
 }
 show('overview');
+
+/* ---------------- theme toggle ----------------
+   No stored choice means "follow the OS", so the first click flips away from
+   whatever the OS is currently showing rather than from a hardcoded default.
+   Every colour is a CSS custom property, so the swap needs no re-render.      */
+(function(){
+  const root = document.documentElement, btn = document.getElementById('themeBtn');
+  const osDark = window.matchMedia('(prefers-color-scheme: dark)');
+  const effective = () => root.getAttribute('data-theme') || (osDark.matches ? 'dark' : 'light');
+  const label = () => btn.setAttribute('aria-label',
+    effective() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  btn.onclick = () => {
+    const next = effective() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('frido-theme', next); } catch(e){}
+    label();
+  };
+  /* while the viewer is still on "follow the OS", track OS changes live */
+  osDark.addEventListener('change', label);
+  label();
+})();
 </script>
 </body>
 </html>
