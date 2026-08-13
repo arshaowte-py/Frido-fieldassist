@@ -84,5 +84,9 @@ Productivity's own PC/TC to within 1%.
 
 ## Working agreement
 
-All git commands run by the repo owner. Claude Code does not run `git checkout`, `add`,
-`commit`, `push`, `status`, `restore`, `stash` or `diff`.
+Claude Code commits and pushes to its designated feature branch. It does not push to
+`main` or open a pull request unless asked — merges are the repo owner's call.
+
+Regenerate `aggregates.json` and `dist/index.html` in the same commit as any change to
+`etl.py`, `enrich.py` or `template.html`, so the deployed artefact never trails the source
+that built it. Run `node test.js` before pushing.
