@@ -30,7 +30,7 @@ apart by header shape rather than name — drop them in `raw/` and they sort the
 | shape | header marker | feeds |
 |---|---|---|
 | rep × SKU × month pivot of UPC | `L2Position User` | Assortment tab, manager scorecard |
-| one row per visit line | `Visit Id` | Distributors tab |
+| one row per visit line | `Visit Id` | Distributors tab, Outlets at risk |
 | shop channel × category totals | `Shop Channel` | reconciliation only |
 
 Each block is optional. If an export is missing, its tab does not render and the rest of
@@ -48,6 +48,54 @@ Add the months to `PERIODS` in `etl.py`:
 ```python
 PERIODS = ["April", "May", "June", "July", "August"]
 ```
+
+## Reading the dashboard
+
+**Trend arrows.** The Overview KPIs carry a month-on-month delta. A FieldAssist pull
+almost always ends mid-month — this one stops on 13 August — so trending the final
+month against a full one reads as a collapse that never happened. Short months are
+identified by field-days per active rep (a part month is short on days but not on
+people) and the arrows compare the last two **complete** months, naming the basis on
+each tile. Conversion moves in percentage points, not percent-of-a-percent.
+
+**CSV export.** Every filterable table has a CSV button. It exports what the filters
+and sort currently select — all matching rows, not just the capped view on screen —
+as raw values rather than formatted text, so `1276003` lands in the sheet, not
+`₹12.8 L`. A UTF-8 BOM is prepended so Excel opens the rupee sign and Indian names
+correctly.
+
+**Deep links.** The URL carries the tab and the shared filters:
+`#tab=outlets&seg=Churned`. Paste one into WhatsApp and the recipient opens the view
+you were looking at. The hash is the *entire* shared state — a filter absent from the
+link is cleared rather than inherited, or the link would show the recipient's filters
+instead of the sender's.
+
+**Sticky filters.** Filters keyed on zone, month, manager or segment are shared: pick
+"West" once and every table that offers it follows, across tabs. Free-text search
+boxes stay local to their table — sharing a half-typed search would be noise. Add a
+key to `STICKY_KEYS` in `template.html` to make another filter shared.
+
+## Outlets at risk
+
+Per-outlet recency, frequency and value, built from the line-level Product Performance
+export. Recency is measured from the last date **in the file**, never from `today` —
+dating it from now would silently reclassify every outlet as churned as the export
+ages on disk.
+
+| segment | meaning |
+|---|---|
+| Active | ordered within 30 days |
+| New | first bought within those same 30 days, so there is no lapse to judge yet |
+| At risk | last order 30–60 days ago — one missed reorder cycle |
+| Churned | last order more than 60 days ago — roughly two missed cycles |
+
+The bands are `BAND_ACTIVE` and `BAND_RISK` in `enrich.py`; the tab states them in
+its own copy, so change both together.
+
+This tab inherits the position filter on the Product Performance pull, so it covers
+51 reps and about 47% of national billed value. **An outlet last served by a rep
+outside that export looks quieter here than it is.** The tab says so on its face.
+Re-pulling the export with the position filter cleared fixes it.
 
 ## Colour and theme
 
@@ -103,11 +151,11 @@ numbers available as a table.
 |---|---|
 | `raw/` | untouched FieldAssist exports (gitignored) |
 | `etl.py` | reads every export, emits `aggregates.json` |
-| `enrich.py` | the three Product Performance reports → assortment, hierarchy, distributors |
+| `enrich.py` | the three Product Performance reports → assortment, hierarchy, distributors, outlet RFM |
 | `template.html` | markup + CSS + JS, `/*__DATA__*/` is the injection point |
 | `build.py` | substitutes JSON into template |
 | `dist/index.html` | the deployable artefact |
-| `test.js` | jsdom pass — renders every tab, flags empty panels |
+| `test.js` | jsdom pass — renders every tab, exercises filters, CSV, trend and deep-link state |
 | `vercel.json` | tells Vercel `dist/` is the output directory |
 
 ## Definitions
@@ -120,6 +168,9 @@ numbers available as a table.
 - **Outlet base** — Outlet Dump GeoHierarchy deduplicated on `Outlet Erp Id`.
 - **Indicative gap value** — zone sales × (national category share − zone category share).
   A prompt for the sales team, not a forecast. Only zones holding ≥3% of national sales.
+- **Lapsed** — an outlet that is at risk or churned. The two together are the call list.
+- **Dormant value** — what a rep's lapsed outlets billed while they were still buying.
+  It is money that has stopped arriving, not a forecast of what chasing them recovers.
 - **UPC** — a unique productive call: one outlet buying one SKU inside one month. Counts
   distribution width, not value.
 - **Reordered** — an outlet with more than one separate billed visit inside the window.

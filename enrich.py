@@ -218,6 +218,92 @@ def read_sku(paths):
     return df
 
 
+# Recency bands, in days back from the last date in the export. General trade
+# reorders on a roughly monthly cadence, so one missed cycle is "at risk" and two
+# is "churned". Change these together with the copy on the tab, which states them.
+BAND_ACTIVE = 30
+BAND_RISK = 60
+
+
+def build_rfm(df):
+    """Per-outlet recency / frequency / value, segmented into a call list.
+
+    Recency is measured from the last date present in the export, never from
+    today: the export is a fixed window, and dating it from `now` would silently
+    reclassify every outlet as churned as the file ages on disk.
+    """
+    if not df["Date"].notna().any():
+        return None
+    asof = df["Date"].max()
+
+    g = (df.groupby("Shop")
+           .agg(last=("Date", "max"), first=("Date", "min"),
+                visits=("Visit Id", "nunique"),
+                net=("Net Value (Order)", "sum"),
+                units=("Order In Unit", "sum"),
+                skus=("Product Name", "nunique"),
+                rep=("L1Position User", "last"),
+                dist=("Distributor", "last"),
+                beat=("Beats", "last"))
+           .reset_index())
+    g["days"] = (asof - g["last"]).dt.days
+    g["tenure"] = (asof - g["first"]).dt.days
+
+    def seg(r):
+        if r.days <= BAND_ACTIVE:
+            # first seen inside the active window too — it has no lapse to judge yet
+            return "New" if r.tenure <= BAND_ACTIVE else "Active"
+        return "At risk" if r.days <= BAND_RISK else "Churned"
+
+    g["seg"] = g.apply(seg, axis=1)
+
+    total_net = float(g["net"].sum())
+    segments = []
+    for name in ["Active", "New", "At risk", "Churned"]:
+        s = g[g["seg"] == name]
+        segments.append({
+            "seg": name, "n": int(len(s)), "net": float(s["net"].sum()),
+            "pct": round(len(s) / len(g) * 100, 1) if len(g) else 0,
+            "share_net": round(float(s["net"].sum()) / total_net * 100, 1) if total_net else 0,
+            "avg": round(float(s["net"].sum()) / len(s), 0) if len(s) else 0,
+        })
+
+    # the worklist is the lapsed half only — an active outlet needs no chase
+    work = g[g["seg"].isin(["At risk", "Churned"])].sort_values("net", ascending=False)
+    rows = [{
+        "shop": r.Shop, "rep": r.rep, "dist": r.dist, "beat": r.beat,
+        "seg": r.seg, "days": int(r.days), "visits": int(r.visits),
+        "net": round(float(r.net)), "skus": int(r.skus),
+        "last": r.last.strftime("%d %b"),
+    } for r in work.itertuples()]
+
+    by_rep = []
+    for rep, s in g.groupby("rep"):
+        lapsed = s[s["seg"].isin(["At risk", "Churned"])]
+        by_rep.append({
+            "rep": rep, "outlets": int(len(s)),
+            "active": int((s["seg"].isin(["Active", "New"])).sum()),
+            "risk": int((s["seg"] == "At risk").sum()),
+            "churned": int((s["seg"] == "Churned").sum()),
+            "lapsed_pct": round(len(lapsed) / len(s) * 100, 1) if len(s) else 0,
+            "lapsed_net": float(lapsed["net"].sum()),
+        })
+    by_rep.sort(key=lambda r: -r["lapsed_net"])
+
+    return {
+        "as_of": asof.strftime("%d %b %Y"),
+        "bands": {"active": BAND_ACTIVE, "risk": BAND_RISK},
+        "outlets": int(len(g)),
+        "segments": segments,
+        "rows": rows,
+        "by_rep": by_rep,
+        "churn_net": float(g.loc[g["seg"] == "Churned", "net"].sum()),
+        "risk_net": float(g.loc[g["seg"] == "At risk", "net"].sum()),
+        "repeat_pct": round(float((g["visits"] > 1).mean()) * 100, 1),
+        "reps": int(g["rep"].nunique()),
+    }
+
+
 def build_distributors(df, national_net=None):
     net = float(df["Net Value (Order)"].sum())
 
@@ -323,6 +409,14 @@ def enrich(src, payload, sku_cat=None):
         sdf = read_sku(found["sku"])
         payload["distributors"] = build_distributors(
             sdf, payload.get("kpis", {}).get("net"))
+        rfm = build_rfm(sdf)
+        if rfm:
+            # the export covers only the reps in it, so the churn list is scoped to
+            # them — say so in the data, not just in the copy
+            rfm["scope_net_pct"] = payload["distributors"].get("coverage_of_national")
+            payload["rfm"] = rfm
+            print(f"    rfm: {rfm['outlets']:,} outlets, "
+                  f"{sum(s['n'] for s in rfm['segments'] if s['seg'] in ('At risk','Churned')):,} lapsed")
 
     if "summary" in found:
         payload.setdefault("quality", {})["channel_check"] = True
