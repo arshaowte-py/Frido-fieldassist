@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frido GT Field Intelligence — Apr–Jun 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#12181D; --paper:#F5F6F2; --card:#FFFFFF; --rule:#E2E4DE;
+  --muted:#6B7580; --faint:#98A0A8;
+  --gain:#0E6F5C; --gain-b:#DCEDE8;
+  --loss:#B4472F; --loss-b:#F6E4DF;
+  --warn:#9A6B08; --warn-b:#F7EDD8;
+  --cool:#3C5A78; --cool-b:#E2E9F0;
+  --disp:'IBM Plex Sans Condensed',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--disp);font-weight:600;margin:0;letter-spacing:-.01em}
+a{color:inherit}
+.mono{font-family:var(--mono)}
+.wrap{max-width:1280px;margin:0 auto;padding:0 22px}
+
+/* ---------- masthead ---------- */
+header{border-bottom:1px solid var(--rule);background:var(--card);position:sticky;top:0;z-index:40}
+.mast{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding:15px 0 12px}
+.mast h1{font-size:20px;letter-spacing:-.02em}
+.mast .sub{font-family:var(--mono);font-size:11px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.09em}
+.mast .right{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint)}
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;
+  background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
+  padding:9px 13px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s}
+nav button:hover{color:var(--ink)}
+nav button[aria-selected="true"]{color:var(--ink);border-color:var(--ink)}
+nav button:focus-visible{outline:2px solid var(--cool);outline-offset:-2px}
+
+main{padding:26px 0 70px}
+.panel[hidden]{display:none}
+section{margin-bottom:34px}
+.shead{display:flex;align-items:baseline;gap:12px;margin-bottom:13px;
+  border-bottom:1px solid var(--rule);padding-bottom:7px;flex-wrap:wrap}
+.shead h2{font-size:15px;letter-spacing:.01em}
+.shead .note{font-size:12.5px;color:var(--muted)}
+
+/* ---------- cards ---------- */
+.card{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:16px 18px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g5{grid-template-columns:repeat(5,1fr)}
+
+/* ---------- kpi ---------- */
+.kpi{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:13px 15px 14px}
+.kpi .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);display:block;margin-bottom:5px}
+.kpi .val{font-family:var(--disp);font-size:31px;font-weight:600;line-height:1;
+  letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.kpi .val .u{font-size:15px;font-weight:500;color:var(--muted);margin-left:2px}
+.kpi .fo{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.35}
+.kpi.hero{background:var(--ink);border-color:var(--ink);color:#fff}
+.kpi.hero .lab{color:#9AA6AE}
+.kpi.hero .fo{color:#A9B4BB}
+
+/* ---------- signature: conversion ribbon ---------- */
+.ribbon-wrap{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:18px 18px 15px}
+.ribbon{display:flex;height:60px;width:100%;border-radius:2px;overflow:hidden;
+  border:1px solid rgba(0,0,0,.07)}
+.ribbon div{position:relative;transition:filter .15s}
+.ribbon div:hover{filter:brightness(1.12)}
+.ribbon .seg-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;color:#fff;letter-spacing:.03em;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);pointer-events:none;padding:0 4px;overflow:hidden}
+.ribbon-key{display:flex;flex-wrap:wrap;gap:5px 20px;margin-top:13px}
+.ribbon-key span{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.ribbon-key i{width:11px;height:11px;border-radius:2px;display:inline-block;flex:none}
+.ribbon-cap{font-size:12.5px;color:var(--muted);margin-top:11px;
+  border-top:1px solid var(--rule);padding-top:11px;max-width:66ch}
+
+/* ---------- bars ---------- */
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:minmax(112px,auto) 1fr minmax(56px,auto);
+  gap:11px;align-items:center;font-size:13px}
+.bar .nm{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .tr{background:#EDEEEA;height:15px;border-radius:2px;overflow:hidden}
+.bar .fl{height:100%;background:var(--cool);border-radius:2px}
+.bar .vv{font-family:var(--mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.fl.gain{background:var(--gain)} .fl.loss{background:var(--loss)}
+.fl.warn{background:var(--warn)} .fl.cool{background:var(--cool)}
+
+/* ---------- tables ---------- */
+.tbl-scroll{overflow-x:auto;border:1px solid var(--rule);border-radius:3px;background:var(--card)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);text-align:left;padding:9px 11px;border-bottom:1px solid var(--rule);
+  white-space:nowrap;background:var(--card);position:sticky;top:0;font-weight:500}
+td{padding:8px 11px;border-bottom:1px solid #EEEFEB;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#FAFAF7}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px}
+td.nm{font-weight:500;max-width:230px;overflow:hidden;text-overflow:ellipsis}
+.sortable{cursor:pointer;user-select:none}
+.sortable:hover{color:var(--ink)}
+.pill{font-family:var(--mono);font-size:10.5px;padding:2px 6px;border-radius:2px;
+  background:#EDEEEA;color:var(--muted)}
+.pill.g{background:var(--gain-b);color:var(--gain)}
+.pill.l{background:var(--loss-b);color:var(--loss)}
+.pill.w{background:var(--warn-b);color:var(--warn)}
+
+/* ---------- matrix ---------- */
+.matrix td.cell{text-align:right;font-family:var(--mono);font-size:12px;position:relative;
+  font-variant-numeric:tabular-nums}
+.matrix td.cell .bg{position:absolute;inset:2px;border-radius:2px;background:var(--gain);opacity:0}
+.matrix td.cell span{position:relative}
+
+/* ---------- callout ---------- */
+.callout{border-left:3px solid var(--loss);background:var(--loss-b);
+  padding:12px 15px;border-radius:0 3px 3px 0;font-size:13.5px;line-height:1.55}
+.callout.w{border-color:var(--warn);background:var(--warn-b)}
+.callout.g{border-color:var(--gain);background:var(--gain-b)}
+.callout.c{border-color:var(--cool);background:var(--cool-b)}
+.callout b{font-weight:600}
+
+/* ---------- misc ---------- */
+.stat-row{display:flex;gap:26px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.stat-row b{font-family:var(--disp);font-size:19px;color:var(--ink);font-weight:600;
+  display:block;letter-spacing:-.02em}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:13px}
+.filters label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted)}
+select,input[type=search]{font-family:var(--body);font-size:13px;padding:6px 9px;
+  border:1px solid var(--rule);border-radius:3px;background:var(--card);color:var(--ink)}
+select:focus-visible,input:focus-visible{outline:2px solid var(--cool);outline-offset:1px}
+.sm{font-size:12.5px;color:var(--muted)}
+.spark{display:flex;align-items:flex-end;gap:3px;height:34px}
+.spark i{flex:1;background:var(--cool);border-radius:1px 1px 0 0;min-height:2px;display:block}
+footer{border-top:1px solid var(--rule);padding:20px 0 40px;font-size:12.5px;color:var(--muted)}
+
+@media(max-width:900px){
+  .g5,.g4{grid-template-columns:repeat(2,1fr)}
+  .g3,.g2{grid-template-columns:1fr}
+  .kpi .val{font-size:26px}
+  .ribbon{height:46px}
+  .bar{grid-template-columns:minmax(88px,auto) 1fr minmax(48px,auto);font-size:12.5px}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media print{nav,.filters{display:none}.panel[hidden]{display:block!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="mast">
+      <h1>Frido GT Field Intelligence</h1>
+      <span class="sub" id="scope"></span>
+      <span class="right" id="gen"></span>
+    </div>
+    <nav role="tablist" id="nav"></nav>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<footer class="wrap">
+  <div>Built from FieldAssist exports — Secondary Order Dump, Outlet Dump GeoHierarchy, Employee Productivity, Attendance, Beat Visit Coverage, and the Users and Beats masters. Figures cover general trade only.</div>
+</footer>
+
+<script>
+const D = /*__DATA__*/;
+
+/* ---------------- helpers ---------------- */
+const inr = n => {
+  n = Number(n)||0;
+  if (Math.abs(n) >= 1e7) return (n/1e7).toFixed(2) + ' Cr';
+  if (Math.abs(n) >= 1e5) return (n/1e5).toFixed(1) + ' L';
+  if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1) + 'k';
+  return Math.round(n).toString();
+};
+const cm = n => (Number(n)||0).toLocaleString('en-IN');
+const pc = n => (Number(n)||0).toFixed(1) + '%';
+const el = (t, c, h) => { const e = document.createElement(t); if(c) e.className = c; if(h!=null) e.innerHTML = h; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function kpi(lab, val, unit, foot, hero){
+  return `<div class="kpi${hero?' hero':''}"><span class="lab">${lab}</span>
+    <div class="val">${val}${unit?`<span class="u">${unit}</span>`:''}</div>
+    ${foot?`<div class="fo">${foot}</div>`:''}</div>`;
+}
+function barList(rows, cls, fmt){
+  const max = Math.max(...rows.map(r => r.v), 1);
+  return `<div class="bars">` + rows.map(r => `
+    <div class="bar"><div class="nm" title="${esc(r.k)}">${esc(r.k)}</div>
+      <div class="tr"><div class="fl ${cls||'cool'}" style="width:${(r.v/max*100).toFixed(1)}%"></div></div>
+      <div class="vv">${fmt?fmt(r.v):cm(r.v)}</div></div>`).join('') + `</div>`;
+}
+function table(cols, rows, id){
+  const head = cols.map((c,i) => `<th class="${c.n?'n':''} ${c.sort!==false?'sortable':''}" data-i="${i}">${c.t}</th>`).join('');
+  const body = rows.map(r => `<tr>` + r.map((v,i) =>
+    `<td class="${cols[i].n?'n':''} ${cols[i].nm?'nm':''}">${v}</td>`).join('') + `</tr>`).join('');
+  return `<div class="tbl-scroll"><table${id?` id="${id}"`:''}><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+/* ---------------- signature ribbon ---------------- */
+/* colour encodes the reason CATEGORY, so the eye groups causes not ranks */
+const CAT_COLOR = {
+  'SHOP RELATED ISSUE':'#B4472F',
+  'MORE FACTORS':'#6E7A85',
+  'COMPETITOR RELATED ISSUE':'#9A6B08',
+  'COMPANY RELATED ISSUE':'#3C5A78',
+  'DISTRIBUTOR RELATED ISSUE':'#3C5A78',
+  'PRODUCT RELATED ISSUE':'#3C5A78',
+  'Not recorded':'#B9BEC2'
+};
+const lum = hex => {
+  const n = parseInt(hex.slice(1),16);
+  return (0.299*(n>>16) + 0.587*((n>>8)&255) + 0.114*(n&255))/255;
+};
+function ribbon(){
+  const total = D.kpis.tc, pcv = D.kpis.pc;
+  const top = D.nosale.by_reason.slice(0,7);
+  const named = top.reduce((a,b) => a + b.n, 0);
+  const other = D.nosale.total - named;
+  const shade = {};
+  const segs = [{k:'Order placed', n:pcv, c:'#0E6F5C', g:'Converted'}]
+    .concat(top.map(r => {
+      const base = CAT_COLOR[r.cat] || '#8B95A0';
+      shade[base] = (shade[base]||0) + 1;
+      return {k:r.name, n:r.n, c:base, g:r.cat, tint:shade[base]-1};
+    }))
+    .concat(other > 0 ? [{k:'All other reasons', n:other, c:'#C4C9CD', g:'Mixed'}] : []);
+
+  const groups = [...new Set(segs.map(s => s.g))];
+  return `<div class="ribbon-wrap">
+    <div class="ribbon">${segs.map(s => {
+      const w = s.n/total*100;
+      const dark = lum(s.c) < 0.55;
+      return `<div style="width:${w.toFixed(2)}%;background:${s.c};
+        filter:brightness(${1 + Math.min(s.tint||0,3)*0.07})"
+        title="${esc(s.k)} — ${cm(s.n)} visits, ${w.toFixed(1)}% of all visits (${esc(s.g)})">
+        ${w > 8 ? `<span class="seg-label" style="color:${dark?'#fff':'#22282D'};
+          text-shadow:${dark?'0 1px 2px rgba(0,0,0,.35)':'none'}">${w.toFixed(0)}%</span>` : ''}
+      </div>`; }).join('')}</div>
+    <div class="ribbon-key">${segs.map(s => `
+      <span><i style="background:${s.c};filter:brightness(${1 + Math.min(s.tint||0,3)*0.07})"></i>${esc(s.k)} · ${cm(s.n)}</span>`).join('')}</div>
+    <div class="ribbon-cap">Every one of the ${cm(total)} visits logged this quarter, in proportion.
+      Teal booked an order. Everything to its right is a visit the field force made and recorded a reason for
+      leaving empty-handed — rust is a problem at the shop, amber is a competitor, slate is everything else.</div>
+  </div>`;
+}
+
+/* ---------------- tabs ---------------- */
+const TABS = [
+  ['overview','Overview', tabOverview],
+  ['people','People', tabPeople],
+  ['conversion','Conversion', tabConversion],
+  ['coverage','Coverage', tabCoverage],
+  ['category','Category × Region', tabCategory],
+  ['notes','Data notes', tabNotes],
+];
+
+function tabOverview(){
+  const k = D.kpis;
+  let h = `<section>
+    <div class="grid g5" style="margin-bottom:12px">
+      ${kpi('Net secondary sales', '₹'+inr(k.net), '', `${cm(k.pc)} orders · ₹${cm(k.avg_order)} average`, true)}
+      ${kpi('Visits logged', cm(k.tc), '', `${k.visits_per_day} per field day`)}
+      ${kpi('Visits that converted', pc(k.conv), '', `${cm(k.pc)} of ${cm(k.tc)}`)}
+      ${kpi('Sales per field day', '₹'+cm(k.sales_per_day), '', `across ${cm(k.present_days)} days worked`)}
+      ${kpi('Lines per order', k.lines_per_pc, '', `${cm(k.lines)} lines sold`)}
+    </div>
+    ${ribbon()}
+  </section>`;
+
+  h += `<section><div class="shead"><h2>The quarter in three numbers</h2></div>
+    <div class="grid g3">
+      <div class="card"><div class="stat-row"><div><b>${cm(k.outlets)}</b>outlets on the master</div></div>
+        <div class="sm" style="margin-top:9px">${cm(k.outlets_visited)} were visited (${pc(k.coverage_pct)}).
+        Only <b>${cm(k.outlets_ordered)}</b> placed an order — ${pc(k.billed_pct)} of the universe.</div></div>
+      <div class="card"><div class="stat-row"><div><b>${cm(D.people.active)}</b>active users on roll</div></div>
+        <div class="sm" style="margin-top:9px">Of ${cm(D.people.field)} field users, <b>${D.people.idle}</b> logged
+        no calls at all this quarter.</div></div>
+      <div class="card"><div class="stat-row"><div><b>${cm(D.outlets.beats_zero)}</b>beats sold nothing</div></div>
+        <div class="sm" style="margin-top:9px">Out of ${cm(D.outlets.beats_total)} beats carrying sales activity
+        between April and mid-August.</div></div>
+    </div></section>`;
+
+  const m = D.monthly;
+  h += `<section><div class="shead"><h2>Month by month</h2>
+    <span class="note">Volume is climbing. The conversion rate is not.</span></div>
+    ${table([{t:'Month'},{t:'Visits',n:1},{t:'Orders',n:1},{t:'Conversion',n:1},
+             {t:'Net sales',n:1},{t:'Reps active',n:1},{t:'Visits / day',n:1},{t:'Sales / day',n:1}],
+      m.map(r => [r.month, cm(r.tc), cm(r.pc),
+        `<span class="pill ${r.conv>=15?'g':'l'}">${pc(r.conv)}</span>`,
+        '₹'+inr(r.net), cm(r.users), r.vpd, '₹'+cm(r.spd)]))}
+  </section>`;
+
+  h += `<section><div class="shead"><h2>Headline read</h2></div>
+    <div class="grid g2">
+      <div class="callout"><b>Six in seven visits end without an order.</b> Conversion was
+        ${pc(m[0].conv)} in April and ${pc(m[2].conv)} in June. Visits rose
+        ${Math.round((m[2].tc/m[0].tc-1)*100)}% over the quarter and sales rose only
+        ${Math.round((m[2].net/m[0].net-1)*100)}% — the team is working harder at the same strike rate.</div>
+      <div class="callout w"><b>Reach is wide, depth is thin.</b> The field touched
+        ${pc(k.coverage_pct)} of the outlet base but billed ${pc(k.billed_pct)}. The gap between
+        those two numbers — ${cm(k.outlets_visited - k.outlets_ordered)} outlets visited but never
+        billed — is the single largest addressable pool in this data.</div>
+    </div></section>`;
+  return h;
+}
+
+function tabPeople(){
+  const p = D.people;
+  let h = `<section><div class="grid g4">
+    ${kpi('On roll', cm(p.active + p.inactive), '', `${cm(p.active)} active · ${cm(p.inactive)} inactive`)}
+    ${kpi('Field users', cm(p.field), '', 'flagged as field in the user master')}
+    ${kpi('Zero-call field users', cm(p.idle), '', 'no visit logged Apr–Jun')}
+    ${kpi('Visits per field day', D.kpis.visits_per_day, '', 'company-wide average')}
+  </div></section>`;
+
+  h += `<section><div class="shead"><h2>Who is on the roster</h2>
+    <span class="note">From the user master, all statuses</span></div>
+    <div class="grid g3">
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">By designation</h3>
+        ${barList(p.by_designation.map(r => ({k:r.name, v:r.n})), 'cool')}</div>
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">By position level</h3>
+        ${barList(p.by_level.map(r => ({k:r.name.replace('Position',''), v:r.n})), 'cool')}</div>
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Active users by region</h3>
+        ${barList(p.by_region.slice(0,10).map(r => ({k:r.name, v:r.n})), 'cool')}</div>
+    </div></section>`;
+
+  h += `<section><div class="shead"><h2>Roster growth</h2>
+    <span class="note">Joining dates from the user master · roster and calls from the monthly productivity export</span></div>
+    <div class="grid g2">
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Joiners by month</h3>
+        ${barList(p.joiners.map(r => ({k:r.month, v:r.n})), 'gain')}</div>
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Roster vs conversion, Apr–Aug</h3>
+        ${table([{t:'Month'},{t:'On report',n:1},{t:'Visits',n:1},{t:'Orders',n:1},{t:'Conv.',n:1}],
+          D.arc.map(r => [r.month, cm(r.roster), cm(r.tc), cm(r.pc),
+            `<span class="pill ${r.conv>=15?'g':'l'}">${pc(r.conv)}</span>`]))}</div>
+    </div></section>`;
+
+  if (p.idle_names.length){
+    h += `<section><div class="shead"><h2>Active field users with no calls this quarter</h2>
+      <span class="note">${p.idle} people · worth confirming whether these are new joiners, office roles, or a mapping problem</span></div>
+      <div class="card sm">${p.idle_names.map(n => esc(n)).join(' · ')}</div></section>`;
+  }
+  return h;
+}
+
+function tabConversion(){
+  const n = D.nosale;
+  let h = `<section><div class="shead"><h2>Why visits don't convert</h2>
+    <span class="note">${cm(n.total)} unproductive visits, each with a reason logged by the rep</span></div>
+    <div class="grid g2">
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Reason category</h3>
+        ${barList(n.by_category.map(r => ({k:r.name, v:r.n})), 'loss')}</div>
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Specific reason</h3>
+        ${barList(n.by_reason.map(r => ({k:r.name, v:r.n})), 'loss')}</div>
+    </div>
+    <div class="callout c" style="margin-top:12px">Read these as rep-reported, not verified.
+      <b>Overall Market Slump</b> at ${cm(n.by_reason[0].n)} entries is the single most-used option and the
+      least actionable one — it may be a genuine signal or the path of least resistance in the app.
+      <b>Key Person Not Available</b> (${cm((n.by_reason.find(r=>r.name.includes('Key Person'))||{n:0}).n)})
+      is a beat-timing problem you can fix; <b>Last Stock Present</b> is a call-cycle problem.</div>
+  </section>`;
+
+  h += `<section><div class="shead"><h2>Conversion by outlet type</h2>
+    <span class="note">Which doors actually buy</span></div>
+    ${table([{t:'Outlet type'},{t:'Visits',n:1},{t:'Orders',n:1},{t:'Conversion',n:1},
+             {t:'Net sales',n:1},{t:'Avg order',n:1}],
+      n.by_type.map(r => [r.type, cm(r.tc), cm(r.pc),
+        `<span class="pill ${r.conv>=16?'g':r.conv>=12?'w':'l'}">${pc(r.conv)}</span>`,
+        '₹'+inr(r.net), '₹'+cm(r.avg)]))}
+    <div class="callout w" style="margin-top:12px">
+      <b>Doctors convert at ${pc((n.by_type.find(t=>t.type==='Doctors')||{conv:0}).conv)}</b> across
+      ${cm((n.by_type.find(t=>t.type==='Doctors')||{tc:0}).tc)} visits — by far the weakest of any type.
+      That is expected if doctors are being detailed for prescription rather than stocked, but FieldAssist
+      is scoring those visits on the same order-booking metric as a medical store. Either the activity type
+      needs separating or the metric does.</div>
+  </section>`;
+
+  h += `<section><div class="shead"><h2>Where the misses are</h2></div>
+    <div class="grid g2">
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Unproductive share by zone</h3>
+        ${table([{t:'Zone'},{t:'Visits',n:1},{t:'No order',n:1},{t:'Miss rate',n:1}],
+          n.by_zone.map(r => [r.zone, cm(r.tc), cm(r.n),
+            `<span class="pill ${r.pct<85?'g':'l'}">${pc(r.pct)}</span>`]))}</div>
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Top reason by zone</h3>
+        <div class="bars">${n.reason_by_zone.slice(0,6).map(z => `
+          <div style="padding:7px 0;border-bottom:1px solid #EEEFEB">
+            <div style="font-weight:600;font-size:13px">${esc(z.zone)}</div>
+            <div class="sm">${z.top.map(t => `${esc(t.name)} <span class="mono">${cm(t.n)}</span>`).join(' · ')}</div>
+          </div>`).join('')}</div></div>
+    </div></section>`;
+
+  const u = D.users;
+  h += `<section><div class="shead"><h2>Rep performance</h2>
+    <span class="note">${u.length} reps with logged calls · click a column to sort</span></div>
+    <div class="filters">
+      <label for="uz">Zone</label>
+      <select id="uz"><option value="">All zones</option>
+        ${[...new Set(u.map(r=>r.zone))].filter(Boolean).sort().map(z=>`<option>${esc(z)}</option>`).join('')}</select>
+      <label for="uq">Find</label>
+      <input type="search" id="uq" placeholder="rep name">
+      <span class="sm" id="ucount"></span>
+    </div>
+    <div id="utable"></div></section>`;
+  return h;
+}
+
+function tabCoverage(){
+  const o = D.outlets, k = D.kpis;
+  let h = `<section><div class="grid g4">
+    ${kpi('Outlets on master', cm(o.total), '', `${cm(o.untagged)} have no type tag`)}
+    ${kpi('Visited this quarter', cm(k.outlets_visited), '', pc(k.coverage_pct)+' of the base')}
+    ${kpi('Billed this quarter', cm(k.outlets_ordered), '', pc(k.billed_pct)+' of the base')}
+    ${kpi('Visited but never billed', cm(k.outlets_visited-k.outlets_ordered), '', 'the addressable pool')}
+  </div></section>`;
+
+  h += `<section><div class="shead"><h2>Coverage by zone</h2>
+    <span class="note">Outlet base against what was actually worked</span></div>
+    ${table([{t:'Zone'},{t:'Outlets',n:1},{t:'Visited',n:1},{t:'% visited',n:1},
+             {t:'Billed',n:1},{t:'% billed',n:1},{t:'Net sales',n:1}],
+      o.zone_coverage.map(r => [r.zone, cm(r.outlets), cm(r.visited), pc(r.visited_pct),
+        cm(r.ordered), `<span class="pill ${r.ordered_pct>=18?'g':r.ordered_pct>=10?'w':'l'}">${pc(r.ordered_pct)}</span>`,
+        '₹'+inr(r.net)]))}
+    <div class="callout" style="margin-top:12px">
+      <b>West carries ${pc(o.zone_coverage[0].net / D.kpis.net * 100)} of national sales</b> from
+      ${pc(o.zone_coverage[0].outlets / o.total * 100)} of the outlet base. That concentration is the
+      biggest structural risk in this dataset — and the biggest argument for where the next reps go.</div>
+  </section>`;
+
+  h += `<section><div class="shead"><h2>Outlet base by type</h2>
+    <span class="note">How many exist, and how many of them ever bought</span></div>
+    ${table([{t:'Outlet type'},{t:'On master',n:1},{t:'Billed Apr–Jun',n:1},{t:'% billed',n:1}],
+      o.type_coverage.map(r => [r.type, cm(r.outlets), cm(r.ordered),
+        `<span class="pill ${r.ordered_pct>=18?'g':r.ordered_pct>=10?'w':'l'}">${pc(r.ordered_pct)}</span>`]))}
+  </section>`;
+
+  h += `<section><div class="shead"><h2>Beats</h2></div>
+    <div class="grid g2">
+      <div class="card"><div class="stat-row">
+        <div><b>${cm(D.kpis.beats)}</b>beats defined</div>
+        <div><b>${cm(D.kpis.beats_active)}</b>active</div>
+        <div><b>${cm(o.beats_zero)}</b>sold nothing</div></div>
+        <div class="sm" style="margin-top:10px">${pc(o.beats_zero/o.beats_total*100)} of the beats
+        that carried activity between April and mid-August produced no sales value at all.</div></div>
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Outlets by zone</h3>
+        ${barList(o.by_zone.map(r => ({k:r.zone, v:r.n})), 'cool')}</div>
+    </div></section>`;
+  return h;
+}
+
+function tabCategory(){
+  const c = D.category;
+  const maxCell = Math.max(...c.matrix.flatMap(r => r.cells.map(x => x.net)), 1);
+  let h = `<section><div class="grid g4">
+    ${kpi('Categories selling', cm(c.cat_count), '', `top ${c.matrix.length-1} shown in full below`)}
+    ${kpi('SKUs selling', cm(c.sku_selling), '', `${c.sku_dead} listed with no sales`)}
+    ${kpi('Top category', c.matrix[0].cat, '', '₹'+inr(c.matrix[0].total)+' · '+pc(c.matrix[0].total/D.kpis.net*100)+' of sales')}
+    ${kpi('Top zone', c.zone_totals[0].zone, '', '₹'+inr(c.zone_totals[0].net))}
+  </div></section>`;
+
+  h += `<section><div class="shead"><h2>Category by zone</h2>
+    <span class="note">Net sales value · shading is relative to the largest cell</span></div>
+    <div class="tbl-scroll"><table class="matrix"><thead><tr>
+      <th>Category</th>${c.zones.map(z => `<th class="n">${esc(z)}</th>`).join('')}
+      <th class="n">Total</th><th class="n">Outlets</th></tr></thead><tbody>
+      ${c.matrix.map(r => `<tr><td class="nm">${esc(r.cat)}</td>
+        ${r.cells.map(x => `<td class="cell" title="${esc(r.cat)} · ${esc(x.zone)} — ₹${inr(x.net)}, ${pc(x.share)} of that zone, ${cm(x.outlets)} outlets">
+          <div class="bg" style="opacity:${(x.net/maxCell*0.5).toFixed(3)}"></div>
+          <span>${x.net > 0 ? '₹'+inr(x.net) : '—'}</span></td>`).join('')}
+        <td class="cell"><span><b>₹${inr(r.total)}</b></span></td>
+        <td class="cell"><span>${cm(r.outlets)}</span></td></tr>`).join('')}
+      <tr><td class="nm"><b>Zone total</b></td>
+        ${c.zone_totals.map(z => `<td class="cell"><span><b>₹${inr(z.net)}</b></span></td>`).join('')}
+        <td class="cell"><span><b>₹${inr(D.kpis.net)}</b></span></td><td class="cell"></td></tr>
+    </tbody></table></div></section>`;
+
+  h += `<section><div class="shead"><h2>Where to push</h2>
+    <span class="note">Categories under-indexing in a zone against their own national share</span></div>
+    <div class="callout c" style="margin-bottom:12px">Read this as a prioritised question list, not a forecast.
+      Each row says: this category takes <b>national share</b> of sales countrywide but only <b>zone share</b>
+      in that zone. <b>Indicative gap</b> is what closing that difference would be worth at the zone's current
+      sales run-rate — it assumes the shortfall is addressable, which is exactly what the sales team should
+      confirm or reject per line.</div>
+    ${table([{t:'Category'},{t:'Zone'},{t:'Zone share',n:1},{t:'National share',n:1},
+             {t:'Gap',n:1},{t:'Current',n:1},{t:'Indicative gap value',n:1},{t:'Outlets buying',n:1}],
+      c.whitespace.map(r => [esc(r.cat), r.zone, pc(r.zone_share), pc(r.national_share),
+        `<span class="pill w">${r.gap.toFixed(1)} pts</span>`, '₹'+inr(r.net),
+        '₹'+inr(r.upside), cm(r.outlets)]))}
+  </section>`;
+
+  h += `<section><div class="shead"><h2>Category by outlet type</h2>
+    <span class="note">Which door each category actually sells through</span></div>
+    <div class="tbl-scroll"><table class="matrix"><thead><tr><th>Category</th>
+      ${c.types.map(t => `<th class="n">${esc(t)}</th>`).join('')}</tr></thead><tbody>
+      ${c.cat_by_type.map(r => {
+        const mx = Math.max(...r.cells.map(x=>x.net), 1);
+        return `<tr><td class="nm">${esc(r.cat)}</td>${r.cells.map(x =>
+          `<td class="cell"><div class="bg" style="opacity:${(x.net/mx*0.45).toFixed(3)}"></div>
+           <span>${x.net>0?'₹'+inr(x.net):'—'}</span></td>`).join('')}</tr>`;
+      }).join('')}
+    </tbody></table></div></section>`;
+
+  h += `<section><div class="shead"><h2>Products</h2></div>
+    <div class="grid g2">
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Top 20 by value</h3>
+        ${table([{t:'Product',nm:1},{t:'Net',n:1},{t:'Outlets',n:1}],
+          c.top_products.map(r => [esc(r.name), '₹'+inr(r.net), cm(r.outlets)]))}</div>
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">20 weakest sellers with any sale</h3>
+        ${table([{t:'Product',nm:1},{t:'Net',n:1},{t:'Outlets',n:1}],
+          c.tail_products.map(r => [esc(r.name), '₹'+inr(r.net), cm(r.outlets)]))}</div>
+    </div></section>`;
+  return h;
+}
+
+function tabNotes(){
+  const q = D.quality;
+  const item = (t, b, cls) => `<div class="callout ${cls||''}" style="margin-bottom:10px"><b>${t}</b><br>${b}</div>`;
+  let h = `<section><div class="shead"><h2>What this dashboard cannot tell you yet</h2>
+    <span class="note">Read before the review — every item here is a gap in FieldAssist, not in the build</span></div>`;
+
+  h += item('No targets exist in the data',
+    `The Employee T/A Report could not be exported, so <b>target versus achievement is absent from every tab</b>.
+     Until that report comes through, nothing here says whether a rep or a zone hit its number — only what it did.`, '');
+  h += item('Journey planning is switched off',
+    `CAP, PJP Adherence % and SC are zero for every user in every month of the productivity export. There is no
+     plan to compare actual visits against, so "did they visit who they were meant to" is unanswerable.
+     Coverage numbers here measure activity, not adherence.`, 'w');
+  h += item('There is no modern trade data',
+    `Every one of the ${cm(D.outlets.total)} outlets on the master carries channel <b>GT</b>. FieldAssist holds
+     zero MT outlets, so this dashboard is general trade only despite MT being in scope.`, 'w');
+  h += item(`${cm(q.outlets_untagged)} outlets have no type tag`,
+    `That is ${pc(q.outlets_untagged_pct)} of the base sitting outside every outlet-type cut on the Coverage and
+     Conversion tabs. There is also no Physio or Clinic type defined in the instance — the closest are Doctors,
+     Medical Stores and Surgical Stores. Fixing this is a masters job in FieldAssist, not a dashboard change.`, 'w');
+  h += item(`${cm(q.users_no_designation)} users have no designation`,
+    `They appear as Unassigned in every people cut. Designation is only populated as L1–L4, which mirrors position
+     level rather than describing a job, so "headcount by designation" is currently a restatement of hierarchy depth.`, 'w');
+  h += item('Product division is not mapped',
+    `The order dump carries a ProductDivision column but it is unpopulated, so category analysis runs on
+     Primary Category only. Secondary Category is available if a deeper cut is wanted later.`, 'c');
+  h += item('Reason codes are self-reported',
+    `Every unproductive visit carries a rep-selected reason. They are useful as a signal of what reps believe is
+     blocking them, not as verified fact. Treat "Overall Market Slump" — the single most-picked option — with
+     particular caution.`, 'c');
+
+  h += `</section><section><div class="shead"><h2>How each number is built</h2></div>
+    <div class="card sm" style="line-height:1.75">
+      <b>Visit</b> — one unique Order No in the Secondary Order Dump. Every visit produces a row whether or not
+      it converts; unproductive ones carry a no-sale reason instead of product lines.<br>
+      <b>Order / productive call</b> — a visit whose lines sum to net value above zero.<br>
+      <b>Conversion</b> — orders ÷ visits. Company conversion of ${pc(D.kpis.conv)} reconciles with the
+      Employee Productivity export's own PC/TC to within a rounding margin.<br>
+      <b>Net sales</b> — sum of NetValue across order lines, ₹${inr(D.kpis.net)} for the quarter. This matches
+      the Product Category Analysis export exactly, which is the cross-check that the dump is complete.<br>
+      <b>Field day</b> — Total Present from the Employee Productivity export, ${cm(D.kpis.present_days)} days
+      across the quarter. Per-day figures divide by this, never by calendar days.<br>
+      <b>Outlet base</b> — Outlet Dump GeoHierarchy deduplicated to ${cm(D.outlets.total)} unique outlet IDs;
+      the raw export repeats outlets mapped to more than one beat.<br>
+      <b>Indicative gap value</b> — zone sales × (national category share − zone category share). A prompt for
+      the sales team, not a forecast.
+    </div></section>`;
+
+  h += `<section><div class="shead"><h2>To make V2 materially better</h2></div>
+    <div class="card"><div class="bars">
+      ${['Export the Employee T/A Report so target vs achievement can be built',
+         'Tag the '+cm(q.outlets_untagged)+' untagged outlets and add Physio and Clinic as shop types if those are real channels',
+         'Turn on journey planning so coverage can be measured against a plan',
+         'Populate ProductDivision, or confirm Primary Category is the intended grouping',
+         'Decide whether doctor visits should be scored on order booking at all',
+         'Confirm whether MT should live in FieldAssist or stay in another system'
+        ].map((t,i) => `<div style="display:flex;gap:11px;padding:7px 0;border-bottom:1px solid #EEEFEB">
+          <span class="mono" style="color:var(--faint);flex:none">${String(i+1).padStart(2,'0')}</span>
+          <span style="font-size:13.5px">${t}</span></div>`).join('')}
+    </div></div></section>`;
+  return h;
+}
+
+/* ---------------- rep table (filter + sort) ---------------- */
+function renderUsers(){
+  const zsel = document.getElementById('uz'), q = document.getElementById('uq');
+  if (!zsel) return;
+  const z = zsel.value, term = (q.value||'').toLowerCase();
+  let rows = D.users.filter(r => (!z || r.zone === z) && (!term || r.user.toLowerCase().includes(term)));
+  rows = rows.slice().sort((a,b) => {
+    const v = (b[uSort.key] ?? 0) - (a[uSort.key] ?? 0);
+    return uSort.dir === 'desc' ? v : -v;
+  });
+  document.getElementById('ucount').textContent = rows.length + ' shown';
+  document.getElementById('utable').innerHTML = table(
+    [{t:'Rep',nm:1,sort:false},{t:'Zone',sort:false},{t:'Level',sort:false},
+     {t:'Visits',n:1},{t:'Orders',n:1},{t:'Conv.',n:1},{t:'Net sales',n:1},
+     {t:'Days',n:1},{t:'Visits/day',n:1},{t:'Sales/day',n:1},{t:'Outlets',n:1}],
+    rows.map(r => [esc(r.user), r.zone, String(r.level).replace('Position',''),
+      cm(r.tc), cm(r.pc),
+      `<span class="pill ${r.conv>=18?'g':r.conv>=11?'w':'l'}">${pc(r.conv)}</span>`,
+      '₹'+inr(r.net), r.days, r.vpd, '₹'+cm(r.spd), cm(r.outlets)]), 'utbl');
+  const keys = [null,null,null,'tc','pc','conv','net','days','vpd','spd','outlets'];
+  document.querySelectorAll('#utbl th').forEach((th,i) => {
+    if (!keys[i]) { th.classList.remove('sortable'); return; }
+    th.onclick = () => {
+      if (uSort.key === keys[i]) uSort.dir = uSort.dir === 'desc' ? 'asc' : 'desc';
+      else { uSort.key = keys[i]; uSort.dir = 'desc'; }
+      renderUsers();
+    };
+  });
+}
+let uSort = {key:'net', dir:'desc'};
+
+/* ---------------- boot ---------------- */
+document.getElementById('scope').textContent = D.kpis.quarter + ' · General trade';
+document.getElementById('gen').textContent = 'Built ' + D.generated;
+
+const nav = document.getElementById('nav'), main = document.getElementById('main');
+TABS.forEach(([id, label], i) => {
+  const b = el('button', null, label);
+  b.setAttribute('role','tab'); b.setAttribute('aria-selected', i===0);
+  b.setAttribute('aria-controls', 'p-'+id);
+  b.onclick = () => show(id);
+  nav.appendChild(b);
+  const p = el('div', 'panel'); p.id = 'p-'+id; p.setAttribute('role','tabpanel');
+  if (i) p.hidden = true;
+  main.appendChild(p);
+});
+
+const built = {};
+function show(id){
+  TABS.forEach(([tid,,fn], i) => {
+    const on = tid === id;
+    nav.children[i].setAttribute('aria-selected', on);
+    const p = document.getElementById('p-'+tid);
+    p.hidden = !on;
+    if (on && !built[tid]) { p.innerHTML = fn(); built[tid] = 1;
+      if (tid === 'conversion'){
+        document.getElementById('uz').onchange = renderUsers;
+        document.getElementById('uq').oninput = renderUsers;
+        renderUsers();
+      }
+    }
+  });
+  window.scrollTo({top:0, behavior:'instant'});
+}
+show('overview');
+</script>
+</body>
+</html>
