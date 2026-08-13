@@ -236,6 +236,36 @@ select,input[type=search]{font-family:var(--body);font-size:13px;padding:6px 9px
   border:1px solid var(--rule);border-radius:3px;background:var(--card);color:var(--ink)}
 select:focus-visible,input:focus-visible{outline:2px solid var(--cool);outline-offset:1px}
 .sm{font-size:12.5px;color:var(--muted)}
+
+/* ---------- csv button ---------- */
+.filters .csv{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--card);border:1px solid var(--rule);border-radius:6px;color:var(--muted);
+  padding:5px 10px;cursor:pointer;transition:color .15s,border-color .15s}
+.filters .csv:hover{color:var(--ink);border-color:var(--faint)}
+.filters .csv:focus-visible{outline:2px solid var(--brand-warm);outline-offset:2px}
+.filters .csv svg{width:13px;height:13px;flex:none}
+
+/* ---------- kpi delta ---------- */
+.kpi .delta{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);
+  font-size:11px;font-weight:500;padding:2px 6px;border-radius:4px;margin-top:7px;
+  font-variant-numeric:tabular-nums}
+.kpi .delta.up{background:var(--gain-b);color:var(--gain)}
+.kpi .delta.down{background:var(--loss-b);color:var(--loss)}
+.kpi .delta.flat{background:var(--neut-b);color:var(--muted)}
+.kpi.hero .delta{background:rgba(255,255,255,.14);color:#fff}
+.kpi .delta .arw{font-size:12px;line-height:1}
+.kpi .basis{display:block;font-size:11px;color:var(--faint);margin-top:5px}
+.kpi.hero .basis{color:#93A7B8}
+
+/* ---------- segment chips ---------- */
+.segs{display:flex;flex-wrap:wrap;gap:8px}
+.seg-chip{display:flex;align-items:center;gap:8px;border:1px solid var(--rule);
+  border-radius:7px;padding:9px 13px;background:var(--card);flex:1 1 160px}
+.seg-chip i{width:10px;height:10px;border-radius:3px;flex:none}
+.seg-chip b{font-family:var(--disp);font-size:19px;font-weight:800;letter-spacing:-.03em;
+  display:block;line-height:1.1}
+.seg-chip .t{font-size:12.5px;color:var(--muted)}
 .spark{display:flex;align-items:flex-end;gap:3px;height:34px}
 .spark i{flex:1;background:var(--cool);border-radius:1px 1px 0 0;min-height:2px;display:block}
 footer{border-top:1px solid var(--rule);padding:20px 0 40px;font-size:12.5px;color:var(--muted)}
@@ -288,6 +318,9 @@ footer{border-top:1px solid var(--rule);padding:20px 0 40px;font-size:12.5px;col
 const D = /*__DATA__*/;
 
 /* ---------------- helpers ---------------- */
+const ICON_DL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/>
+  <path d="m7.5 10 4.5 4.5 4.5-4.5"/><path d="M4 19h16"/></svg>`;
 const inr = n => {
   n = Number(n)||0;
   if (Math.abs(n) >= 1e7) return (n/1e7).toFixed(2) + ' Cr';
@@ -300,10 +333,50 @@ const pc = n => (Number(n)||0).toFixed(1) + '%';
 const el = (t, c, h) => { const e = document.createElement(t); if(c) e.className = c; if(h!=null) e.innerHTML = h; return e; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-function kpi(lab, val, unit, foot, hero){
+function kpi(lab, val, unit, foot, hero, trend){
   return `<div class="kpi${hero?' hero':''}"><span class="lab">${lab}</span>
     <div class="val">${val}${unit?`<span class="u">${unit}</span>`:''}</div>
-    ${foot?`<div class="fo">${foot}</div>`:''}</div>`;
+    ${foot?`<div class="fo">${foot}</div>`:''}
+    ${trend||''}</div>`;
+}
+
+/* ---------------- month-on-month trend ----------------
+   The last month of a FieldAssist pull is normally mid-month — this one ends on
+   the 13th — so comparing it against a full month reads as a collapse that never
+   happened. Identify short months by field-days per active rep (a partial month
+   is short on days but not on people) and trend the last two COMPLETE months
+   instead, naming the basis on the tile so the comparison is never implied.   */
+const TREND = (() => {
+  const ms = (D.monthly||[]).filter(m => m.days > 0 && m.users > 0);
+  if (ms.length < 2) return null;
+  const dpu = m => m.days / m.users;
+  const sorted = ms.map(dpu).sort((a,b) => a-b);
+  const med = sorted[Math.floor(sorted.length/2)];
+  const full = ms.filter(m => dpu(m) >= med * 0.6);
+  if (full.length < 2) return null;
+  return {
+    cur: full[full.length-1], prev: full[full.length-2],
+    partial: ms.filter(m => dpu(m) < med * 0.6).map(m => m.month),
+  };
+})();
+const mon3 = s => String(s||'').slice(0,3);
+
+/* pp:true reports a percentage-POINT move — the percent change OF a percentage
+   ("conversion fell 1.5%") is a number nobody can act on. */
+function trend(key, opts){
+  if (!TREND) return '';
+  const o = opts||{};
+  const a = Number(TREND.prev[key]), b = Number(TREND.cur[key]);
+  if (!isFinite(a) || !isFinite(b) || (!o.pp && a === 0)) return '';
+  const diff = o.pp ? (b - a) : (b - a) / Math.abs(a) * 100;
+  const good = o.lowerIsBetter ? -diff : diff;
+  const flat = Math.abs(diff) < (o.pp ? 0.15 : 1);
+  const cls = flat ? 'flat' : (good > 0 ? 'up' : 'down');
+  const arw = flat ? '→' : (diff > 0 ? '↑' : '↓');
+  const txt = (diff > 0 ? '+' : diff < 0 ? '−' : '') +
+    Math.abs(diff).toFixed(1) + (o.pp ? ' pp' : '%');
+  return `<span class="delta ${cls}"><span class="arw">${arw}</span>${txt}</span>
+    <span class="basis">${mon3(TREND.cur.month)} vs ${mon3(TREND.prev.month)}</span>`;
 }
 function barList(rows, cls, fmt){
   const max = Math.max(...rows.map(r => r.v), 1);
@@ -319,9 +392,43 @@ function table(cols, rows, id){
   return `<div class="tbl-scroll"><table${id?` id="${id}"`:''}><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
+/* ---------------- shared filter state ----------------
+   Filters keyed on one of these stick across tabs and ride in the URL, so
+   picking "West" once holds everywhere and the link you send carries it.
+   Anything else (free-text search, table-specific selects) stays local to its
+   table — sharing a half-typed search box across tabs would be noise.        */
+const STICKY_KEYS = new Set(['zone','month','manager','seg']);
+const STICKY = {};
+
+function readHash(){
+  const h = location.hash.replace(/^#/, '');
+  if (!h) return {};
+  return Object.fromEntries(h.split('&').filter(Boolean).map(p => {
+    const i = p.indexOf('=');
+    return i < 0 ? [decodeURIComponent(p), ''] : [decodeURIComponent(p.slice(0,i)), decodeURIComponent(p.slice(i+1))];
+  }));
+}
+let HASH_LOCK = false;   /* set while we write, so our own write is not read back */
+function writeHash(tab){
+  const parts = ['tab=' + encodeURIComponent(tab)];
+  Object.keys(STICKY).sort().forEach(k => {
+    if (STICKY[k]) parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(STICKY[k]));
+  });
+  const next = '#' + parts.join('&');
+  if (next === location.hash) return;
+  HASH_LOCK = true;
+  /* replaceState keeps the back button clean, but it throws on opaque origins
+     (about:blank, some sandboxes). The URL is a convenience, never a dependency,
+     so fall back and then give up rather than take the page down with it. */
+  try { history.replaceState(null, '', next); }
+  catch (e) { try { location.hash = next; } catch (e2) {} }
+  setTimeout(() => { HASH_LOCK = false; }, 0);
+}
+
 /* ---------------- filterable / sortable table ----------------
-   cols:    [{t, key, n, nm, fmt, sort:false}]
-   filters: [{id, label, key, type:'select'|'search', all, ph}]           */
+   cols:    [{t, key, n, nm, fmt, sort:false, csv}]
+   filters: [{id, label, key, type:'select'|'search', all, ph}]
+   A filter whose key is in STICKY_KEYS is shared; the rest are local.        */
 const FT = {}, FTW = {};
 function ftable(id, cfg){
   FT[id] = cfg;
@@ -334,7 +441,10 @@ function ftable(id, cfg){
          [...new Set(cfg.rows.map(r => r[f.key]))]
            .filter(v => v !== '' && v != null).sort()
            .map(v => `<option>${esc(v)}</option>`).join('')}</select>`).join('');
-  return `<div class="filters">${bar}<span class="sm" id="${id}-n"></span></div>
+  return `<div class="filters">${bar}<span class="sm" id="${id}-n"></span>
+      <button type="button" class="csv" id="${id}-csv"
+              title="Download these rows as CSV">${ICON_DL} CSV</button>
+    </div>
     <div id="${id}-t"></div>`;
 }
 function ftableWire(id){
@@ -342,11 +452,33 @@ function ftableWire(id){
   FTW[id] = 1;
   (FT[id].filters||[]).forEach(f => {
     const e = document.getElementById(`${id}-${f.id}`);
-    if (e) e[f.type === 'search' ? 'oninput' : 'onchange'] = () => ftableDraw(id);
+    if (!e) return;
+    /* a shared filter opens on whatever the rest of the dashboard is showing */
+    if (STICKY_KEYS.has(f.key) && STICKY[f.key] != null) e.value = STICKY[f.key];
+    e[f.type === 'search' ? 'oninput' : 'onchange'] = () => {
+      if (STICKY_KEYS.has(f.key)) { STICKY[f.key] = e.value; syncSticky(); }
+      else ftableDraw(id);
+    };
   });
+  const dl = document.getElementById(id+'-csv');
+  if (dl) dl.onclick = () => downloadCSV(id);
   ftableDraw(id);
 }
-function ftableDraw(id){
+/* push the shared values into every wired table, then redraw them all */
+function syncSticky(){
+  Object.keys(FT).forEach(tid => {
+    if (!FTW[tid]) return;
+    (FT[tid].filters||[]).forEach(f => {
+      if (!STICKY_KEYS.has(f.key)) return;
+      const e = document.getElementById(`${tid}-${f.id}`);
+      /* only if this table offers that value — tables cover different row sets */
+      if (e && [...e.options].some(o => o.value === (STICKY[f.key]||''))) e.value = STICKY[f.key] || '';
+    });
+    ftableDraw(tid);
+  });
+  writeHash(CURRENT_TAB);
+}
+function ftableRows(id){
   const cfg = FT[id];
   let rows = cfg.rows.slice();
   (cfg.filters||[]).forEach(f => {
@@ -364,6 +496,11 @@ function ftableDraw(id){
       ? y - x : String(y).localeCompare(String(x));
     return s.dir === 'asc' ? -v : v;
   });
+  return rows;
+}
+function ftableDraw(id){
+  const cfg = FT[id];
+  const rows = ftableRows(id);
   const n = document.getElementById(id+'-n');
   if (n) n.textContent = rows.length + (cfg.limit && rows.length > cfg.limit
     ? ` matched · top ${cfg.limit} shown` : ' shown');
@@ -377,11 +514,39 @@ function ftableDraw(id){
     const c = cfg.cols[i];
     if (!c.key || c.sort === false) { th.classList.remove('sortable'); return; }
     th.onclick = () => {
+      const s = cfg.sort;
       if (s.key === c.key) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
       else { s.key = c.key; s.dir = 'desc'; }
       ftableDraw(id);
     };
   });
+}
+
+/* ---------------- CSV export ----------------
+   Exports what is on screen — current filters, current sort, every matching row
+   even when the view is capped. Raw values, not the formatted HTML: a sales-ops
+   sheet wants 1276003, not "₹12.8 L".                                        */
+function csvCell(v){
+  if (v == null) return '';
+  const s = String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+/* kept separate from the download so the content can be asserted in tests */
+function csvFor(id){
+  const cfg = FT[id], rows = ftableRows(id);
+  const cols = cfg.cols.filter(c => c.key);
+  const head = cols.map(c => csvCell(c.t)).join(',');
+  const body = rows.map(r => cols.map(c => csvCell(r[c.key])).join(',')).join('\n');
+  return head + '\n' + body;
+}
+function downloadCSV(id){
+  /* BOM so Excel opens the rupee sign and Indian names as UTF-8 */
+  const blob = new Blob(['﻿' + csvFor(id)], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `frido-${id}-${(D.rfm && D.rfm.as_of || 'export').replace(/ /g,'-')}.csv`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
 }
 
 /* ---------------- signature ribbon ----------------
@@ -462,19 +627,109 @@ const TABS = [
   ['category','Category × Region', tabCategory],
   ['assortment','Assortment', tabAssortment, 'assortment'],
   ['distributors','Distributors', tabDistributors, 'distributors'],
+  ['outlets','Outlets at risk', tabRFM, 'rfm'],
   ['notes','Data notes', tabNotes],
 ].filter(t => !t[3] || D[t[3]]);
+
+/* ---------------- outlets at risk (RFM) ---------------- */
+const SEG_ROLE = {'Active':'gain', 'New':'cool', 'At risk':'warn', 'Churned':'loss'};
+
+function tabRFM(){
+  const r = D.rfm, b = r.bands;
+  const seg = n => r.segments.find(s => s.seg === n) || {n:0, net:0, pct:0};
+  const churn = seg('Churned'), risk = seg('At risk');
+
+  let h = `<section>
+    <div class="grid g4" style="margin-bottom:12px">
+      ${kpi('Churned outlets', cm(churn.n), '', `bought, then went quiet for ${b.risk}+ days`, true)}
+      ${kpi('Value gone quiet', '₹'+inr(churn.net), '', `${pc(churn.share_net)} of billing in this export`)}
+      ${kpi('At risk', cm(risk.n), '', `last order ${b.active}–${b.risk} days ago · ₹${inr(risk.net)}`)}
+      ${kpi('Outlets billing again', pc(r.repeat_pct), '', `more than one billed visit`)}
+    </div>
+    <div class="callout w"><b>Scope.</b> This tab is built from the line-level Product
+      Performance export, which covers ${cm(r.reps)} reps${r.scope_net_pct ?
+      ` and ${pc(r.scope_net_pct)} of national billed value` : ''} — not the full field
+      force. An outlet last served by a rep outside that export will look quieter here
+      than it is. Recency is measured from <b>${r.as_of}</b>, the last date in the file,
+      not from today.</div>
+  </section>`;
+
+  h += `<section><div class="shead"><h2>Where the outlet base sits</h2>
+      <span class="note">${cm(r.outlets)} outlets that bought at least once, by how
+      recently they last ordered</span></div>
+    <div class="segs">${r.segments.map(s => `
+      <div class="seg-chip"><i style="background:var(--${SEG_ROLE[s.seg]})"></i>
+        <div><b>${cm(s.n)}</b><span class="t">${s.seg} · ₹${inr(s.net)} · ${pc(s.pct)}</span></div>
+      </div>`).join('')}</div>
+    <div class="sm" style="margin-top:11px">Active means an order inside ${b.active} days.
+      New means the outlet first bought inside that same window, so it has no lapse to
+      judge yet. At risk is ${b.active}–${b.risk} days. Churned is more than ${b.risk} —
+      roughly two missed reorder cycles.</div>
+  </section>`;
+
+  h += `<section><div class="shead"><h2>Lapsed base by rep</h2>
+      <span class="note">who is carrying the most dormant value</span></div>
+    ${ftable('rrep', {
+      rows: r.by_rep,
+      limit: 40,
+      sort: {key:'lapsed_net', dir:'desc'},
+      filters: [{id:'q', label:'Find', key:'rep', type:'search', ph:'rep name'}],
+      cols: [
+        {t:'Rep', key:'rep', nm:true},
+        {t:'Outlets', key:'outlets', n:true, fmt:v=>cm(v)},
+        {t:'Active', key:'active', n:true, fmt:v=>cm(v)},
+        {t:'At risk', key:'risk', n:true, fmt:v=>cm(v)},
+        {t:'Churned', key:'churned', n:true, fmt:v=>cm(v)},
+        {t:'Lapsed', key:'lapsed_pct', n:true,
+         fmt:v=>`<span class="pill ${v>=70?'l':v>=50?'w':''}">${pc(v)}</span>`},
+        {t:'Dormant value', key:'lapsed_net', n:true, fmt:v=>'₹'+inr(v)},
+      ]})}
+  </section>`;
+
+  h += `<section><div class="shead"><h2>The call list</h2>
+      <span class="note">every at-risk and churned outlet, biggest first — export it
+      and hand it out</span></div>
+    ${ftable('rout', {
+      rows: r.rows,
+      limit: 200,
+      sort: {key:'net', dir:'desc'},
+      filters: [
+        {id:'s', label:'Segment', key:'seg', type:'select', all:'At risk + churned'},
+        {id:'r', label:'Rep', key:'rep', type:'select', all:'All reps'},
+        {id:'q', label:'Find', key:'shop', type:'search', ph:'outlet name'},
+      ],
+      cols: [
+        {t:'Outlet', key:'shop', nm:true},
+        {t:'Status', key:'seg',
+         fmt:v=>`<span class="pill ${v==='Churned'?'l':'w'}">${esc(v)}</span>`},
+        {t:'Days quiet', key:'days', n:true, fmt:v=>cm(v)},
+        {t:'Last order', key:'last', n:true},
+        {t:'Billed visits', key:'visits', n:true, fmt:v=>cm(v)},
+        {t:'SKUs', key:'skus', n:true, fmt:v=>cm(v)},
+        {t:'Value', key:'net', n:true, fmt:v=>'₹'+inr(v)},
+        {t:'Rep', key:'rep', nm:true},
+        {t:'Distributor', key:'dist', nm:true},
+        {t:'Beat', key:'beat', nm:true},
+      ]})}
+  </section>`;
+
+  return h;
+}
 
 function tabOverview(){
   const k = D.kpis;
   let h = `<section>
     <div class="grid g5" style="margin-bottom:12px">
-      ${kpi('Net secondary sales', '₹'+inr(k.net), '', `${cm(k.pc)} orders · ₹${cm(k.avg_order)} average`, true)}
-      ${kpi('Visits logged', cm(k.tc), '', `${k.visits_per_day} per field day`)}
-      ${kpi('Visits that converted', pc(k.conv), '', `${cm(k.pc)} of ${cm(k.tc)}`)}
-      ${kpi('Sales per field day', '₹'+cm(k.sales_per_day), '', `across ${cm(k.present_days)} days worked`)}
+      ${kpi('Net secondary sales', '₹'+inr(k.net), '', `${cm(k.pc)} orders · ₹${cm(k.avg_order)} average`, true, trend('net'))}
+      ${kpi('Visits logged', cm(k.tc), '', `${k.visits_per_day} per field day`, false, trend('tc'))}
+      ${kpi('Visits that converted', pc(k.conv), '', `${cm(k.pc)} of ${cm(k.tc)}`, false, trend('conv', {pp:true}))}
+      ${kpi('Sales per field day', '₹'+cm(k.sales_per_day), '', `across ${cm(k.present_days)} days worked`, false, trend('spd'))}
       ${kpi('Lines per order', k.lines_per_pc, '', `${cm(k.lines)} lines sold`)}
     </div>
+    ${TREND && TREND.partial.length ? `<div class="sm" style="margin:-4px 0 12px">
+      Arrows compare the last two complete months. ${TREND.partial.join(', ')} is a
+      part month in this pull and is excluded from the comparison, though its totals
+      are included in the figures above.</div>` : ''}
     ${ribbon()}
   </section>`;
 
@@ -1102,7 +1357,10 @@ TABS.forEach(([id, label], i) => {
 });
 
 const built = {};
-function show(id){
+let CURRENT_TAB = TABS[0][0];
+function show(id, opts){
+  if (!TABS.some(t => t[0] === id)) id = TABS[0][0];
+  CURRENT_TAB = id;
   TABS.forEach(([tid,,fn], i) => {
     const on = tid === id;
     nav.children[i].setAttribute('aria-selected', on);
@@ -1110,12 +1368,32 @@ function show(id){
     p.hidden = !on;
     if (on && !built[tid]) {
       p.innerHTML = fn(); built[tid] = 1;
+      /* wire every table declared so far — a tab may render several */
       Object.keys(FT).forEach(ftableWire);
     }
   });
-  window.scrollTo({top:0, behavior:'instant'});
+  writeHash(id);
+  if (!(opts && opts.keepScroll)) window.scrollTo({top:0, behavior:'instant'});
 }
-show('overview');
+
+/* ---------------- deep links ----------------
+   #tab=outlets&zone=West&seg=Churned — the tab plus whichever shared filters are
+   set. Applying the filters BEFORE the tab renders means the table draws filtered
+   once, rather than drawing everything and then visibly re-filtering.         */
+function applyHash(opts){
+  const q = readHash();
+  /* The hash carries the entire shared state, so a key absent from it is
+     CLEARED, not left alone. Merging instead would let a link like
+     "#tab=outlets" inherit whatever filter the recipient already had set, and
+     the page they opened would not be the page the sender was looking at. */
+  STICKY_KEYS.forEach(k => { STICKY[k] = q[k] || ''; });
+  show(q.tab || TABS[0][0], opts);
+  /* tables built on an earlier visit need pushing to the new values */
+  syncSticky();
+}
+applyHash();
+/* back/forward, or a pasted link into an already-open page */
+window.addEventListener('hashchange', () => { if (!HASH_LOCK) applyHash({keepScroll:true}); });
 
 /* ---------------- theme toggle ----------------
    No stored choice means "follow the OS", so the first click flips away from
@@ -1123,7 +1401,12 @@ show('overview');
    Every colour is a CSS custom property, so the swap needs no re-render.      */
 (function(){
   const root = document.documentElement, btn = document.getElementById('themeBtn');
-  const osDark = window.matchMedia('(prefers-color-scheme: dark)');
+  if (!btn) return;
+  /* matchMedia is missing in some headless/embedded engines; without this guard
+     an unimplemented API takes the whole toggle down rather than degrading it */
+  const osDark = window.matchMedia
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : {matches:false, addEventListener(){}};
   const effective = () => root.getAttribute('data-theme') || (osDark.matches ? 'dark' : 'light');
   const label = () => btn.setAttribute('aria-label',
     effective() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
