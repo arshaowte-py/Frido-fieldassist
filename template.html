@@ -164,7 +164,6 @@ footer{border-top:1px solid var(--rule);padding:20px 0 40px;font-size:12.5px;col
     <div class="mast">
       <h1>Frido GT Field Intelligence</h1>
       <span class="sub" id="scope"></span>
-      <span class="right" id="gen"></span>
     </div>
     <nav role="tablist" id="nav"></nav>
   </div>
@@ -253,7 +252,7 @@ function ribbon(){
       </div>`; }).join('')}</div>
     <div class="ribbon-key">${segs.map(s => `
       <span><i style="background:${s.c};filter:brightness(${1 + Math.min(s.tint||0,3)*0.07})"></i>${esc(s.k)} · ${cm(s.n)}</span>`).join('')}</div>
-    <div class="ribbon-cap">Every one of the ${cm(total)} visits logged this quarter, in proportion.
+    <div class="ribbon-cap">Every one of the ${cm(total)} visits logged in this range, in proportion.
       Teal booked an order. Everything to its right is a visit the field force made and recorded a reason for
       leaving empty-handed — rust is a problem at the shop, amber is a competitor, slate is everything else.</div>
   </div>`;
@@ -289,7 +288,7 @@ function tabOverview(){
         Only <b>${cm(k.outlets_ordered)}</b> placed an order — ${pc(k.billed_pct)} of the universe.</div></div>
       <div class="card"><div class="stat-row"><div><b>${cm(D.people.active)}</b>active users on roll</div></div>
         <div class="sm" style="margin-top:9px">Of ${cm(D.people.field)} field users, <b>${D.people.idle}</b> logged
-        no calls at all this quarter.</div></div>
+        no calls at all in this range.</div></div>
       <div class="card"><div class="stat-row"><div><b>${cm(D.outlets.beats_zero)}</b>beats sold nothing</div></div>
         <div class="sm" style="margin-top:9px">Out of ${cm(D.outlets.beats_total)} beats carrying sales activity
         between April and mid-August.</div></div>
@@ -305,12 +304,21 @@ function tabOverview(){
         '₹'+inr(r.net), cm(r.users), r.vpd, '₹'+cm(r.spd)]))}
   </section>`;
 
+  // last full month is the last entry with volume comparable to earlier months
+  // August is partial (mid-month) so pick the last non-partial month by finding the
+  // last entry whose TC is at least half of the previous month
+  let lastFull = m.length - 1;
+  while (lastFull > 0 && m[lastFull].tc < m[lastFull-1].tc * 0.7) lastFull--;
+  const base = m[0], last = m[lastFull];
+  const partialNote = lastFull < m.length - 1
+    ? ` <span class="sm">(August is a partial month and excluded from the trend calc.)</span>` : '';
   h += `<section><div class="shead"><h2>Headline read</h2></div>
     <div class="grid g2">
       <div class="callout"><b>Six in seven visits end without an order.</b> Conversion was
-        ${pc(m[0].conv)} in April and ${pc(m[2].conv)} in June. Visits rose
-        ${Math.round((m[2].tc/m[0].tc-1)*100)}% over the quarter and sales rose only
-        ${Math.round((m[2].net/m[0].net-1)*100)}% — the team is working harder at the same strike rate.</div>
+        ${pc(base.conv)} in ${base.month} and ${pc(last.conv)} in ${last.month}. Visits rose
+        ${Math.round((last.tc/base.tc-1)*100)}% across the range and sales rose
+        ${Math.round((last.net/base.net-1)*100)}% — the team is working harder at close to
+        the same strike rate.${partialNote}</div>
       <div class="callout w"><b>Reach is wide, depth is thin.</b> The field touched
         ${pc(k.coverage_pct)} of the outlet base but billed ${pc(k.billed_pct)}. The gap between
         those two numbers — ${cm(k.outlets_visited - k.outlets_ordered)} outlets visited but never
@@ -351,7 +359,7 @@ function tabPeople(){
     </div></section>`;
 
   if (p.idle_names.length){
-    h += `<section><div class="shead"><h2>Active field users with no calls this quarter</h2>
+    h += `<section><div class="shead"><h2>Active field users with no calls in this range</h2>
       <span class="note">${p.idle} people · worth confirming whether these are new joiners, office roles, or a mapping problem</span></div>
       <div class="card sm">${p.idle_names.map(n => esc(n)).join(' · ')}</div></section>`;
   }
@@ -423,8 +431,8 @@ function tabCoverage(){
   const o = D.outlets, k = D.kpis;
   let h = `<section><div class="grid g4">
     ${kpi('Outlets on master', cm(o.total), '', `${cm(o.untagged)} have no type tag`)}
-    ${kpi('Visited this quarter', cm(k.outlets_visited), '', pc(k.coverage_pct)+' of the base')}
-    ${kpi('Billed this quarter', cm(k.outlets_ordered), '', pc(k.billed_pct)+' of the base')}
+    ${kpi('Visited in this range', cm(k.outlets_visited), '', pc(k.coverage_pct)+' of the base')}
+    ${kpi('Billed in this range', cm(k.outlets_ordered), '', pc(k.billed_pct)+' of the base')}
     ${kpi('Visited but never billed', cm(k.outlets_visited-k.outlets_ordered), '', 'the addressable pool')}
   </div></section>`;
 
@@ -622,7 +630,6 @@ let uSort = {key:'net', dir:'desc'};
 
 /* ---------------- boot ---------------- */
 document.getElementById('scope').textContent = D.kpis.quarter + ' · General trade';
-document.getElementById('gen').textContent = 'Built ' + D.generated;
 
 const nav = document.getElementById('nav'), main = document.getElementById('main');
 TABS.forEach(([id, label], i) => {
