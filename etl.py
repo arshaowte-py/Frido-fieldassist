@@ -44,8 +44,24 @@ def clean_str(series):
 
 
 # ---------------------------------------------------------------- load
-print("reading order dump ...")
-dump = pd.read_excel(one("Secondary_Order_Dump*.xlsx"), sheet_name=0)
+print("reading order dump(s) ...")
+dump_files = many("Secondary_Order_Dump*.xlsx")
+assert dump_files, "no Secondary_Order_Dump file found in raw/"
+parts = []
+for f in dump_files:
+    p = pd.read_excel(f, sheet_name=0)
+    print(f"  {os.path.basename(f)}: {len(p):,} rows")
+    parts.append(p)
+dump = pd.concat(parts, ignore_index=True, sort=False)
+# NOTE: Order No is repeated once per product line within an order, so we do NOT
+# de-dupe it. FieldAssist exports are pulled on non-overlapping date ranges, so
+# duplicate Order Nos across files should not occur - flag if they do.
+overlap = dump["Order No"].duplicated(keep=False).sum() - dump.groupby("Order No").size().gt(1).sum() * 0
+if len(parts) > 1:
+    per_file = [set(p["Order No"]) for p in parts]
+    common = set.intersection(*per_file)
+    if common:
+        print(f"  WARNING: {len(common)} Order Nos appear in more than one export file - dedupe recommended")
 dump["Order Date"] = pd.to_datetime(dump["Order Date"], errors="coerce")
 dump["NetValue"] = num(dump["NetValue"])
 dump["Qty ( StdUnit )"] = num(dump["Qty ( StdUnit )"])
@@ -108,8 +124,9 @@ bvc["Net Sale Value"] = num(bvc["Net Sale Value"])
 bvc["Zone"] = clean_str(bvc["Zone"])
 
 # --------------------------------------------------- quarter scope
-Q = dump[dump["Period"].isin(["April", "May", "June"])].copy()
-prodQ = prod[prod["_month"].isin(["April", "May", "June"])].copy()
+PERIODS = ["April", "May", "June", "July", "August"]
+Q = dump[dump["Period"].isin(PERIODS)].copy()
+prodQ = prod[prod["_month"].isin(PERIODS)].copy()
 
 # A "call" is one Order No. Productive = that call booked value.
 call = (Q.groupby("Order No")
@@ -135,7 +152,7 @@ present_days = float(prodQ["Total Present"].sum())
 
 # --------------------------------------------------- headline KPIs
 kpis = {
-    "quarter": "Apr–Jun 2026",
+    "quarter": "Apr–Aug 2026",
     "users_total": int(len(users)),
     "users_active": int(users["is Active"].sum()),
     "users_field": int((users["is Field"] & users["is Active"]).sum()),
@@ -160,7 +177,7 @@ kpis["billed_pct"] = round(kpis["outlets_ordered"] / kpis["outlets"] * 100, 1)
 
 # --------------------------------------------------- monthly trend
 monthly = []
-for m in ["April", "May", "June"]:
+for m in PERIODS:
     c = call[call["period"] == m]
     p = prodQ[prodQ["_month"] == m]
     days = float(p["Total Present"].sum())
@@ -415,7 +432,6 @@ for c in top_cats:
     cat_by_type.append({"cat": c, "cells": cells})
 
 payload = {
-    "generated": pd.Timestamp.now().strftime("%d %b %Y, %H:%M"),
     "kpis": kpis,
     "monthly": monthly,
     "arc": arc,
