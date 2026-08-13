@@ -13,15 +13,26 @@ setTimeout(()=>{
     if(len<400) errs.push('EMPTY PANEL: '+t.textContent);
   });
   // check for unresolved values
-  const html=d.body.innerHTML;
+  const html=d.body.innerHTML.replace(/<script[\s\S]*?<\/script>/g,'');
   ['undefined','NaN','null','\\[object'].forEach(bad=>{
     const n=(html.match(new RegExp(bad,'g'))||[]).length;
     if(n) errs.push(`${n}x "${bad}" in output`);
   });
-  // rep table interaction
-  d.querySelectorAll('nav button')[2].click();
-  const q=d.getElementById('uq');
-  if(q){ q.value='a'; q.dispatchEvent(new w.Event('input')); console.log('  rep filter ->', d.getElementById('ucount').textContent); }
-  const th=d.querySelectorAll('#utbl th')[5]; if(th){ th.click(); console.log('  sort click ok, rows=', d.querySelectorAll('#utbl tbody tr').length); }
+  // every filterable table: search, select and a sort click
+  [['urep','q','z'],['mgr','q'],['askus','q','c'],['areps','q','m'],
+   ['dist','q'],['vel','q'],['dbeat','q','d'],['zcov',null,'z'],['ws',null,'z'],['prod','q','c']]
+  .forEach(([id,sq,ss])=>{
+    if(!d.getElementById(id+'-t')) return;
+    if(sq){ const e=d.getElementById(`${id}-${sq}`);
+      if(e){ e.value='a'; e.dispatchEvent(new w.Event('input')); } else errs.push(`${id}: search missing`); }
+    // selects on optional columns only render when the source export supplies them
+    if(ss){ const e=d.getElementById(`${id}-${ss}`);
+      if(e){ if(e.options.length<2) errs.push(`${id}: ${ss} select has no options`);
+             else { e.value=e.options[1].value; e.dispatchEvent(new w.Event('change')); } } }
+    const th=[...d.querySelectorAll(`#${id}-tbl th.sortable`)][0];
+    if(th) th.click(); else errs.push(`${id}: no sortable column`);
+    const n=d.querySelectorAll(`#${id}-tbl tbody tr`).length;
+    console.log(`  ${id.padEnd(8)} filtered -> ${String(n).padStart(4)} rows  (${d.getElementById(id+'-n').textContent})`);
+  });
   console.log(errs.length? '\nISSUES:\n'+errs.join('\n') : '\nno issues');
 },400);

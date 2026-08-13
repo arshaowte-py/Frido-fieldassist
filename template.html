@@ -210,6 +210,71 @@ function table(cols, rows, id){
   return `<div class="tbl-scroll"><table${id?` id="${id}"`:''}><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
+/* ---------------- filterable / sortable table ----------------
+   cols:    [{t, key, n, nm, fmt, sort:false}]
+   filters: [{id, label, key, type:'select'|'search', all, ph}]           */
+const FT = {}, FTW = {};
+function ftable(id, cfg){
+  FT[id] = cfg;
+  cfg.sort = cfg.sort || {};
+  const bar = (cfg.filters||[]).map(f => f.type === 'search'
+    ? `<label for="${id}-${f.id}">${f.label}</label>
+       <input type="search" id="${id}-${f.id}" placeholder="${f.ph||''}">`
+    : `<label for="${id}-${f.id}">${f.label}</label>
+       <select id="${id}-${f.id}"><option value="">${f.all||'All'}</option>${
+         [...new Set(cfg.rows.map(r => r[f.key]))]
+           .filter(v => v !== '' && v != null).sort()
+           .map(v => `<option>${esc(v)}</option>`).join('')}</select>`).join('');
+  return `<div class="filters">${bar}<span class="sm" id="${id}-n"></span></div>
+    <div id="${id}-t"></div>`;
+}
+function ftableWire(id){
+  if (FTW[id] || !document.getElementById(id+'-t')) return;
+  FTW[id] = 1;
+  (FT[id].filters||[]).forEach(f => {
+    const e = document.getElementById(`${id}-${f.id}`);
+    if (e) e[f.type === 'search' ? 'oninput' : 'onchange'] = () => ftableDraw(id);
+  });
+  ftableDraw(id);
+}
+function ftableDraw(id){
+  const cfg = FT[id];
+  let rows = cfg.rows.slice();
+  (cfg.filters||[]).forEach(f => {
+    const e = document.getElementById(`${id}-${f.id}`);
+    if (!e || !e.value) return;
+    const v = e.value.toLowerCase();
+    rows = f.type === 'search'
+      ? rows.filter(r => String(r[f.key]||'').toLowerCase().includes(v))
+      : rows.filter(r => String(r[f.key]).toLowerCase() === v);
+  });
+  const s = cfg.sort;
+  if (s.key) rows.sort((a,b) => {
+    const x = a[s.key], y = b[s.key];
+    const v = (typeof x === 'number' && typeof y === 'number')
+      ? y - x : String(y).localeCompare(String(x));
+    return s.dir === 'asc' ? -v : v;
+  });
+  const n = document.getElementById(id+'-n');
+  if (n) n.textContent = rows.length + (cfg.limit && rows.length > cfg.limit
+    ? ` matched · top ${cfg.limit} shown` : ' shown');
+  const view = cfg.limit ? rows.slice(0, cfg.limit) : rows;
+  document.getElementById(id+'-t').innerHTML = view.length
+    ? table(cfg.cols.map(c => ({t:c.t, n:c.n, nm:c.nm, sort: !!(c.key && c.sort !== false)})),
+            view.map(r => cfg.cols.map(c => c.fmt ? c.fmt(r[c.key], r) : esc(r[c.key] ?? ''))),
+            id+'-tbl')
+    : `<div class="card sm">Nothing matches that filter.</div>`;
+  document.querySelectorAll(`#${id}-tbl th`).forEach((th,i) => {
+    const c = cfg.cols[i];
+    if (!c.key || c.sort === false) { th.classList.remove('sortable'); return; }
+    th.onclick = () => {
+      if (s.key === c.key) s.dir = s.dir === 'asc' ? 'desc' : 'asc';
+      else { s.key = c.key; s.dir = 'desc'; }
+      ftableDraw(id);
+    };
+  });
+}
+
 /* ---------------- signature ribbon ---------------- */
 /* colour encodes the reason CATEGORY, so the eye groups causes not ranks */
 const CAT_COLOR = {
@@ -259,14 +324,17 @@ function ribbon(){
 }
 
 /* ---------------- tabs ---------------- */
+/* fourth entry gates the tab on its source export being present */
 const TABS = [
   ['overview','Overview', tabOverview],
   ['people','People', tabPeople],
   ['conversion','Conversion', tabConversion],
   ['coverage','Coverage', tabCoverage],
   ['category','Category × Region', tabCategory],
+  ['assortment','Assortment', tabAssortment, 'assortment'],
+  ['distributors','Distributors', tabDistributors, 'distributors'],
   ['notes','Data notes', tabNotes],
-];
+].filter(t => !t[3] || D[t[3]]);
 
 function tabOverview(){
   const k = D.kpis;
@@ -358,6 +426,51 @@ function tabPeople(){
             `<span class="pill ${r.conv>=15?'g':'l'}">${pc(r.conv)}</span>`]))}</div>
     </div></section>`;
 
+  if (D.hierarchy){
+    const hy = D.hierarchy;
+    const mapped = hy.managers.filter(m => m.name !== 'Unmapped');
+    h += `<section><div class="shead"><h2>Manager scorecard</h2>
+      <span class="note">Reps rolled up to the L2 they report to · ${cm(hy.mapped_reps)} of
+      ${cm(hy.mapped_reps + hy.unmapped_reps)} reps carry a manager in the export</span></div>
+      ${hy.unmapped_reps ? `<div class="callout w" style="margin-bottom:12px">
+        <b>${cm(hy.unmapped_reps)} reps sit outside this rollup.</b> The Product Performance export was pulled
+        with a position filter, so only ${cm(hy.mapped_reps)} reps carry an L2 name. Those unmapped reps hold
+        ₹${inr((hy.managers.find(m => m.name === 'Unmapped')||{net:0}).net)} of booked value — the line below is
+        real but it is not yet the whole field force. Re-pull the report with no filter to close this.</div>` : ''}
+      ${ftable('mgr', {
+        rows: hy.managers,
+        sort: {key:'net', dir:'desc'},
+        cols: [{t:'Manager', key:'name', nm:1, sort:false,
+                fmt:v => v === 'Unmapped' ? `<span class="sm">${esc(v)}</span>` : esc(v)},
+               {t:'Reps', key:'reps', n:1, fmt:v => cm(v)},
+               {t:'Visits', key:'tc', n:1, fmt:v => cm(v)},
+               {t:'Orders', key:'pc', n:1, fmt:v => cm(v)},
+               {t:'Conv.', key:'conv', n:1,
+                fmt:v => `<span class="pill ${v>=16?'g':v>=12?'w':'l'}">${pc(v)}</span>`},
+               {t:'Net sales', key:'net', n:1, fmt:v => '₹'+inr(v)},
+               {t:'Avg order', key:'avg_order', n:1, fmt:v => '₹'+cm(v)},
+               {t:'Visits/day', key:'vpd', n:1},
+               {t:'Sales/day', key:'spd', n:1, fmt:v => '₹'+cm(v)},
+               {t:'Outlets', key:'outlets', n:1, fmt:v => cm(v)},
+               {t:'SKUs sold', key:'skus', n:1, fmt:v => v ? cm(v) : '—'}],
+        filters: [{id:'q', label:'Find', key:'name', type:'search', ph:'manager name'}],
+      })}
+      ${(() => {
+        // a manager running a handful of visits produces a meaningless rate — hold the
+        // spread callout to teams with enough volume for the number to mean something
+        const soak = mapped.filter(m => m.tc >= 500);
+        if (soak.length < 2) return '';
+        const lo = soak.reduce((a,b) => b.conv < a.conv ? b : a);
+        const hi = soak.reduce((a,b) => b.conv > a.conv ? b : a);
+        return `<div class="callout" style="margin-top:12px">
+          <b>Conversion runs from ${pc(lo.conv)} to ${pc(hi.conv)} between managers</b> — ${esc(hi.name)}
+          converts ${(hi.conv/lo.conv).toFixed(1)}× what ${esc(lo.name)} does, on the same product range and
+          the same app. Across the ${cm(soak.length)} managers running 500 visits or more, that spread is the
+          most controllable number in this dashboard: it is a coaching gap before it is a market gap.</div>`;
+      })()}
+    </section>`;
+  }
+
   if (p.idle_names.length){
     h += `<section><div class="shead"><h2>Active field users with no calls in this range</h2>
       <span class="note">${p.idle} people · worth confirming whether these are new joiners, office roles, or a mapping problem</span></div>
@@ -413,17 +526,31 @@ function tabConversion(){
     </div></section>`;
 
   const u = D.users;
+  const hasMgr = u.some(r => r.manager);
   h += `<section><div class="shead"><h2>Rep performance</h2>
     <span class="note">${u.length} reps with logged calls · click a column to sort</span></div>
-    <div class="filters">
-      <label for="uz">Zone</label>
-      <select id="uz"><option value="">All zones</option>
-        ${[...new Set(u.map(r=>r.zone))].filter(Boolean).sort().map(z=>`<option>${esc(z)}</option>`).join('')}</select>
-      <label for="uq">Find</label>
-      <input type="search" id="uq" placeholder="rep name">
-      <span class="sm" id="ucount"></span>
-    </div>
-    <div id="utable"></div></section>`;
+    ${ftable('urep', {
+      rows: u,
+      sort: {key:'net', dir:'desc'},
+      cols: [{t:'Rep', key:'user', nm:1, sort:false, fmt:v => esc(v)},
+             {t:'Zone', key:'zone', sort:false, fmt:v => esc(v)}]
+        .concat(hasMgr ? [{t:'Reports to', key:'manager', sort:false, fmt:v => esc(v||'—')}] : [])
+        .concat([{t:'Level', key:'level', sort:false, fmt:v => String(v).replace('Position','')},
+                 {t:'Visits', key:'tc', n:1, fmt:v => cm(v)},
+                 {t:'Orders', key:'pc', n:1, fmt:v => cm(v)},
+                 {t:'Conv.', key:'conv', n:1,
+                  fmt:v => `<span class="pill ${v>=18?'g':v>=11?'w':'l'}">${pc(v)}</span>`},
+                 {t:'Net sales', key:'net', n:1, fmt:v => '₹'+inr(v)},
+                 {t:'Days', key:'days', n:1},
+                 {t:'Visits/day', key:'vpd', n:1},
+                 {t:'Sales/day', key:'spd', n:1, fmt:v => '₹'+cm(v)},
+                 {t:'Outlets', key:'outlets', n:1, fmt:v => cm(v)}])
+        .concat(hasMgr ? [{t:'SKUs sold', key:'skus', n:1, fmt:v => v ? cm(v) : '—'}] : []),
+      filters: [{id:'z', label:'Zone', key:'zone', type:'select', all:'All zones'}]
+        .concat(hasMgr ? [{id:'m', label:'Manager', key:'manager', type:'select', all:'All managers'}] : [])
+        .concat([{id:'q', label:'Find', key:'user', type:'search', ph:'rep name'}]),
+    })}
+  </section>`;
   return h;
 }
 
@@ -438,11 +565,19 @@ function tabCoverage(){
 
   h += `<section><div class="shead"><h2>Coverage by zone</h2>
     <span class="note">Outlet base against what was actually worked</span></div>
-    ${table([{t:'Zone'},{t:'Outlets',n:1},{t:'Visited',n:1},{t:'% visited',n:1},
-             {t:'Billed',n:1},{t:'% billed',n:1},{t:'Net sales',n:1}],
-      o.zone_coverage.map(r => [r.zone, cm(r.outlets), cm(r.visited), pc(r.visited_pct),
-        cm(r.ordered), `<span class="pill ${r.ordered_pct>=18?'g':r.ordered_pct>=10?'w':'l'}">${pc(r.ordered_pct)}</span>`,
-        '₹'+inr(r.net)]))}
+    ${ftable('zcov', {
+      rows: o.zone_coverage,
+      sort: {key:'outlets', dir:'desc'},
+      cols: [{t:'Zone', key:'zone', nm:1, sort:false, fmt:v => esc(v)},
+             {t:'Outlets', key:'outlets', n:1, fmt:v => cm(v)},
+             {t:'Visited', key:'visited', n:1, fmt:v => cm(v)},
+             {t:'% visited', key:'visited_pct', n:1, fmt:v => pc(v)},
+             {t:'Billed', key:'ordered', n:1, fmt:v => cm(v)},
+             {t:'% billed', key:'ordered_pct', n:1,
+              fmt:v => `<span class="pill ${v>=18?'g':v>=10?'w':'l'}">${pc(v)}</span>`},
+             {t:'Net sales', key:'net', n:1, fmt:v => '₹'+inr(v)}],
+      filters: [{id:'z', label:'Zone', key:'zone', type:'select', all:'All zones'}],
+    })}
     <div class="callout" style="margin-top:12px">
       <b>West carries ${pc(o.zone_coverage[0].net / D.kpis.net * 100)} of national sales</b> from
       ${pc(o.zone_coverage[0].outlets / o.total * 100)} of the outlet base. That concentration is the
@@ -503,11 +638,20 @@ function tabCategory(){
       in that zone. <b>Indicative gap</b> is what closing that difference would be worth at the zone's current
       sales run-rate — it assumes the shortfall is addressable, which is exactly what the sales team should
       confirm or reject per line.</div>
-    ${table([{t:'Category'},{t:'Zone'},{t:'Zone share',n:1},{t:'National share',n:1},
-             {t:'Gap',n:1},{t:'Current',n:1},{t:'Indicative gap value',n:1},{t:'Outlets buying',n:1}],
-      c.whitespace.map(r => [esc(r.cat), r.zone, pc(r.zone_share), pc(r.national_share),
-        `<span class="pill w">${r.gap.toFixed(1)} pts</span>`, '₹'+inr(r.net),
-        '₹'+inr(r.upside), cm(r.outlets)]))}
+    ${ftable('ws', {
+      rows: c.whitespace,
+      sort: {key:'upside', dir:'desc'},
+      cols: [{t:'Category', key:'cat', nm:1, sort:false, fmt:v => esc(v)},
+             {t:'Zone', key:'zone', sort:false, fmt:v => esc(v)},
+             {t:'Zone share', key:'zone_share', n:1, fmt:v => pc(v)},
+             {t:'National share', key:'national_share', n:1, fmt:v => pc(v)},
+             {t:'Gap', key:'gap', n:1, fmt:v => `<span class="pill w">${v.toFixed(1)} pts</span>`},
+             {t:'Current', key:'net', n:1, fmt:v => '₹'+inr(v)},
+             {t:'Indicative gap value', key:'upside', n:1, fmt:v => '₹'+inr(v)},
+             {t:'Outlets buying', key:'outlets', n:1, fmt:v => cm(v)}],
+      filters: [{id:'z', label:'Zone', key:'zone', type:'select', all:'All zones'},
+                {id:'c', label:'Category', key:'cat', type:'select', all:'All categories'}],
+    })}
   </section>`;
 
   h += `<section><div class="shead"><h2>Category by outlet type</h2>
@@ -522,15 +666,205 @@ function tabCategory(){
       }).join('')}
     </tbody></table></div></section>`;
 
-  h += `<section><div class="shead"><h2>Products</h2></div>
+  if (c.all_products){
+    const hasCat = c.all_products.some(p => p.cat);
+    h += `<section><div class="shead"><h2>Products</h2>
+      <span class="note">Every SKU with a sale, ranked · search or sort to find one</span></div>
+      ${ftable('prod', {
+        rows: c.all_products,
+        sort: {key:'net', dir:'desc'},
+        cols: [{t:'Product', key:'name', nm:1, sort:false, fmt:v => esc(v)}]
+          .concat(hasCat ? [{t:'Category', key:'cat', sort:false, fmt:v => esc(v)}] : [])
+          .concat([{t:'Net sales', key:'net', n:1, fmt:v => '₹'+inr(v)},
+                   {t:'Qty', key:'qty', n:1, fmt:v => cm(Math.round(v))},
+                   {t:'Outlets', key:'outlets', n:1, fmt:v => cm(v)},
+                   {t:'Order lines', key:'lines', n:1, fmt:v => cm(v)}]),
+        filters: [{id:'q', label:'Find', key:'name', type:'search', ph:'product name'}]
+          .concat(hasCat ? [{id:'c', label:'Category', key:'cat', type:'select', all:'All categories'}] : []),
+      })}
+    </section>`;
+  } else {
+    h += `<section><div class="shead"><h2>Products</h2></div>
+      <div class="grid g2">
+        <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Top 20 by value</h3>
+          ${table([{t:'Product',nm:1},{t:'Net',n:1},{t:'Outlets',n:1}],
+            c.top_products.map(r => [esc(r.name), '₹'+inr(r.net), cm(r.outlets)]))}</div>
+        <div class="card"><h3 style="font-size:13px;margin-bottom:11px">20 weakest sellers with any sale</h3>
+          ${table([{t:'Product',nm:1},{t:'Net',n:1},{t:'Outlets',n:1}],
+            c.tail_products.map(r => [esc(r.name), '₹'+inr(r.net), cm(r.outlets)]))}</div>
+      </div></section>`;
+  }
+  return h;
+}
+
+function tabAssortment(){
+  const a = D.assortment;
+  const lastFull = a.totals.find(t => t.month === a.last_month) || a.totals[0];
+  const first = a.totals.find(t => t.month === a.first_month) || a.totals[0];
+  const partial = a.partial_month
+    ? ` <span class="sm">${a.partial_month} is a part month — the trend columns use ${a.first_month} to ${a.last_month}.</span>` : '';
+
+  let h = `<section><div class="grid g4">
+    ${kpi('SKUs with any distribution', cm(a.sku_count), '', `across ${cm(a.reps.length)} reps in this export`)}
+    ${kpi('Top 10 SKUs', pc(a.top10_share), '', `of every unique productive call · top 25 take ${pc(a.top25_share)}`)}
+    ${kpi(`SKUs per rep, ${a.last_month}`, lastFull.skus_per_rep, '', `${first.skus_per_rep} in ${a.first_month}`)}
+    ${kpi(`Live SKUs, ${a.last_month}`, cm(lastFull.skus), '', `${cm(first.skus)} in ${a.first_month}`)}
+  </div></section>`;
+
+  h += `<section><div class="shead"><h2>Distribution month by month</h2>
+    <span class="note">UPC is a unique productive call — one outlet buying one SKU once in the month</span></div>
+    ${table([{t:'Month'},{t:'UPC',n:1},{t:'SKUs sold',n:1},{t:'Reps selling',n:1},
+             {t:'SKUs per rep',n:1},{t:'UPC per rep',n:1}],
+      a.totals.map(r => [r.month + (r.month === a.partial_month ? ' <span class="pill w">part</span>' : ''),
+        cm(r.upc), cm(r.skus), cm(r.reps), r.skus_per_rep, cm(r.upc_per_rep)]))}
+    <div class="callout w" style="margin-top:12px"><b>The range is narrowing while the volume grows.</b>
+      UPC per rep held around ${cm(lastFull.upc_per_rep)} but the number of distinct SKUs each rep sells fell from
+      ${first.skus_per_rep} in ${a.first_month} to ${lastFull.skus_per_rep} in ${a.last_month}. Reps are selling more
+      of less. With ${pc(a.top10_share)} of all distribution sitting in ten SKUs, the assortment is the
+      concentration risk — not the outlet base.${partial}</div>
+  </section>`;
+
+  const cats = a.skus.some(s => s.cat);
+  const mcols = a.months.map((m,i) => ({t:m, key:'m'+i, n:1, fmt:v => v ? cm(v) : '—'}));
+  const srows = a.skus.map(s => {
+    const r = {name:s.name, cat:s.cat||'', total:s.total, reps:s.reps};
+    s.by_month.forEach((v,i) => r['m'+i] = v);
+    return r;
+  });
+  h += `<section><div class="shead"><h2>SKU distribution</h2>
+    <span class="note">Unique outlets buying each SKU, by month · top ${cm(a.skus.length)} of ${cm(a.sku_count)} SKUs</span></div>
+    ${ftable('askus', {
+      rows: srows,
+      sort: {key:'total', dir:'desc'},
+      cols: [{t:'SKU', key:'name', nm:1, sort:false, fmt:v => esc(v)}]
+        .concat(cats ? [{t:'Category', key:'cat', sort:false, fmt:v => esc(v)}] : [])
+        .concat(mcols)
+        .concat([{t:'Total UPC', key:'total', n:1, fmt:v => `<b>${cm(v)}</b>`},
+                 {t:'Reps', key:'reps', n:1, fmt:v => cm(v)}]),
+      filters: [{id:'q', label:'Find', key:'name', type:'search', ph:'SKU name'}]
+        .concat(cats ? [{id:'c', label:'Category', key:'cat', type:'select', all:'All categories'}] : []),
+    })}
+  </section>`;
+
+  const mv = (rows, cls) => `<div class="bars">${rows.map(r => `
+    <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;
+                padding:7px 0;border-bottom:1px solid #EEEFEB">
+      <div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+           title="${esc(r.name)}">${esc(r.name)}</div>
+      <div class="mono sm">${cm(r.first)} → ${cm(r.last)}</div>
+      <div><span class="pill ${cls}">${r.delta > 0 ? '+' : ''}${cm(r.delta)}</span></div>
+    </div>`).join('')}</div>`;
+
+  h += `<section><div class="shead"><h2>What is gaining and losing shelf</h2>
+    <span class="note">Change in unique outlets buying, ${a.first_month} against ${a.last_month}</span></div>
     <div class="grid g2">
-      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Top 20 by value</h3>
-        ${table([{t:'Product',nm:1},{t:'Net',n:1},{t:'Outlets',n:1}],
-          c.top_products.map(r => [esc(r.name), '₹'+inr(r.net), cm(r.outlets)]))}</div>
-      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">20 weakest sellers with any sale</h3>
-        ${table([{t:'Product',nm:1},{t:'Net',n:1},{t:'Outlets',n:1}],
-          c.tail_products.map(r => [esc(r.name), '₹'+inr(r.net), cm(r.outlets)]))}</div>
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Gaining distribution</h3>
+        ${mv(a.gaining, 'g')}</div>
+      <div class="card"><h3 style="font-size:13px;margin-bottom:11px">Losing distribution</h3>
+        ${mv(a.fading, 'l')}</div>
     </div></section>`;
+
+  h += `<section><div class="shead"><h2>Range each rep actually sells</h2>
+    <span class="note">A rep carrying three SKUs is a coverage problem the visit count will never show</span></div>
+    ${ftable('areps', {
+      rows: a.reps,
+      sort: {key:'upc', dir:'desc'},
+      cols: [{t:'Rep', key:'rep', nm:1, sort:false, fmt:v => esc(v)},
+             {t:'Reports to', key:'manager', sort:false, fmt:v => esc(v)},
+             {t:'SKUs sold', key:'skus', n:1, fmt:v => cm(v)},
+             {t:`SKUs in ${a.last_month}`, key:'skus_last', n:1, fmt:v => cm(v)},
+             {t:'UPC', key:'upc', n:1, fmt:v => cm(v)},
+             {t:'Biggest SKU', key:'top_sku', nm:1, sort:false, fmt:v => esc(v)},
+             {t:'Its share', key:'top_share', n:1,
+              fmt:v => `<span class="pill ${v>=25?'l':v>=15?'w':''}">${pc(v)}</span>`}],
+      filters: [{id:'m', label:'Manager', key:'manager', type:'select', all:'All managers'},
+                {id:'q', label:'Find', key:'rep', type:'search', ph:'rep name'}],
+    })}
+  </section>`;
+  return h;
+}
+
+function tabDistributors(){
+  const x = D.distributors;
+  let h = `<section>
+    <div class="callout c" style="margin-bottom:14px"><b>This tab runs on a partial export.</b>
+      The SKU-wise sales report covers ${cm(x.reps)} of the ${cm(D.users.length)} reps with logged calls
+      and ₹${inr(x.net)} of the ₹${inr(D.kpis.net)} booked nationally${
+        x.coverage_of_national ? ` — ${pc(x.coverage_of_national)} of value` : ''}.
+      Shares and rankings below are true within that slice; absolute totals are not the national picture.
+      Re-pull the report with no position filter and this becomes the whole company.</div>
+    <div class="grid g4">
+      ${kpi('Distributors billing', cm(x.count), '', `${x.from} to ${x.to}`)}
+      ${kpi('Top 5 distributors', pc(x.top5_share), '', `of value in scope · top 10 take ${pc(x.top10_share)}`)}
+      ${kpi('Outlets billed', cm(x.outlets), '', `across ${cm(x.beats)} beats and ${cm(x.skus)} SKUs`)}
+      ${kpi('Outlets that reordered', pc(x.repeat.repeat_pct), '', `${cm(x.repeat.once)} of ${cm(x.repeat.total)} bought once and never again`)}
+    </div></section>`;
+
+  const r = x.repeat;
+  h += `<section><div class="shead"><h2>Does a billed outlet come back</h2>
+    <span class="note">Number of separate billed visits per outlet inside the window</span></div>
+    <div class="grid g2">
+      <div class="card">${barList([
+        {k:'Bought once only', v:r.once},
+        {k:'Bought twice', v:r.twice},
+        {k:'Bought three or more times', v:r.thrice_plus}], 'cool')}</div>
+      <div class="callout"><b>${pc(r.once/r.total*100)} of billed outlets bought exactly once.</b>
+        Every one of those ${cm(r.once)} outlets cleared the hardest bar in general trade — it agreed to stock —
+        and then was not converted a second time. That is a call-cycle and follow-up question, and it is
+        cheaper to fix than opening new doors.</div>
+    </div></section>`;
+
+  h += `<section><div class="shead"><h2>Distributor scorecard</h2>
+    <span class="note">Click a column to sort · the depth columns matter more than the value column</span></div>
+    ${ftable('dist', {
+      rows: x.rows,
+      sort: {key:'net', dir:'desc'},
+      cols: [{t:'Distributor', key:'name', nm:1, sort:false, fmt:v => esc(v)},
+             {t:'Net sales', key:'net', n:1, fmt:v => '₹'+inr(v)},
+             {t:'Share', key:'share', n:1, fmt:v => pc(v)},
+             {t:'Outlets', key:'outlets', n:1, fmt:v => cm(v)},
+             {t:'Beats', key:'beats', n:1, fmt:v => cm(v)},
+             {t:'SKUs', key:'skus', n:1, fmt:v => cm(v)},
+             {t:'Reps', key:'reps', n:1, fmt:v => cm(v)},
+             {t:'Orders', key:'visits', n:1, fmt:v => cm(v)},
+             {t:'Avg order', key:'avg_order', n:1, fmt:v => '₹'+cm(v)},
+             {t:'Per outlet', key:'per_outlet', n:1, fmt:v => '₹'+cm(v)},
+             {t:'Biggest SKU', key:'top_sku', nm:1, sort:false, fmt:v => esc(v)}],
+      filters: [{id:'q', label:'Find', key:'name', type:'search', ph:'distributor name'}],
+    })}
+  </section>`;
+
+  h += `<section><div class="shead"><h2>SKU velocity</h2>
+    <span class="note">Units moved against the outlets that moved them — low units per outlet is a trial that never repeated</span></div>
+    ${ftable('vel', {
+      rows: x.velocity,
+      sort: {key:'net', dir:'desc'},
+      cols: [{t:'SKU', key:'name', nm:1, sort:false, fmt:v => esc(v)},
+             {t:'Net sales', key:'net', n:1, fmt:v => '₹'+inr(v)},
+             {t:'Units', key:'units', n:1, fmt:v => cm(v)},
+             {t:'Outlets', key:'outlets', n:1, fmt:v => cm(v)},
+             {t:'Distributors', key:'dists', n:1, fmt:v => cm(v)},
+             {t:'Units per outlet', key:'per_outlet', n:1,
+              fmt:v => `<span class="pill ${v>=6?'g':v>=3?'':'w'}">${v}</span>`}],
+      filters: [{id:'q', label:'Find', key:'name', type:'search', ph:'SKU name'}],
+    })}
+  </section>`;
+
+  h += `<section><div class="shead"><h2>Beats by value</h2>
+    <span class="note">Top ${cm(x.beat_rows.length)} beat and distributor pairs in scope</span></div>
+    ${ftable('dbeat', {
+      rows: x.beat_rows,
+      sort: {key:'net', dir:'desc'},
+      cols: [{t:'Beat', key:'beat', nm:1, sort:false, fmt:v => esc(v)},
+             {t:'Distributor', key:'distributor', nm:1, sort:false, fmt:v => esc(v)},
+             {t:'Net sales', key:'net', n:1, fmt:v => '₹'+inr(v)},
+             {t:'Outlets', key:'outlets', n:1, fmt:v => cm(v)},
+             {t:'Orders', key:'visits', n:1, fmt:v => cm(v)},
+             {t:'SKUs', key:'skus', n:1, fmt:v => cm(v)}],
+      filters: [{id:'d', label:'Distributor', key:'distributor', type:'select', all:'All distributors'},
+                {id:'q', label:'Find', key:'beat', type:'search', ph:'beat name'}],
+    })}
+  </section>`;
   return h;
 }
 
@@ -560,6 +894,19 @@ function tabNotes(){
   h += item('Product division is not mapped',
     `The order dump carries a ProductDivision column but it is unpopulated, so category analysis runs on
      Primary Category only. Secondary Category is available if a deeper cut is wanted later.`, 'c');
+  if (D.hierarchy || D.distributors){
+    const parts = [];
+    if (D.hierarchy) parts.push(`only ${cm(D.hierarchy.mapped_reps)} of
+      ${cm(D.hierarchy.mapped_reps + D.hierarchy.unmapped_reps)} reps carry a manager, so the
+      manager scorecard covers part of the field force`);
+    if (D.distributors) parts.push(`the SKU-wise sales report holds ₹${inr(D.distributors.net)} of the
+      ₹${inr(D.kpis.net)} booked nationally, so every distributor share is a share of that slice`);
+    h += item('The Product Performance exports were pulled with a position filter',
+      `All three flexible reports cover the same ${cm(D.distributors ? D.distributors.reps : D.hierarchy.mapped_reps)}-rep
+       subset — ${parts.join(', and ')}. Nothing here is wrong, but the Assortment and Distributors tabs
+       are a sample rather than a census until the reports are re-pulled with the position filter cleared.
+       That single re-export is the highest-value thing on this list.`, 'w');
+  }
   h += item('Reason codes are self-reported',
     `Every unproductive visit carries a rep-selected reason. They are useful as a signal of what reps believe is
      blocking them, not as verified fact. Treat "Overall Market Slump" — the single most-picked option — with
@@ -579,14 +926,27 @@ function tabNotes(){
       <b>Outlet base</b> — Outlet Dump GeoHierarchy deduplicated to ${cm(D.outlets.total)} unique outlet IDs;
       the raw export repeats outlets mapped to more than one beat.<br>
       <b>Indicative gap value</b> — zone sales × (national category share − zone category share). A prompt for
-      the sales team, not a forecast.
+      the sales team, not a forecast.${D.assortment ? `<br>
+      <b>UPC</b> — a unique productive call, from the Product Performance pivot: one outlet buying one SKU
+      inside one month. It counts distribution width, not value, which is why a SKU can top the UPC table
+      and sit mid-table on sales.<br>
+      <b>SKUs per rep</b> — distinct SKUs a rep billed at least once that month, averaged across reps who sold
+      anything. A rep absent that month does not drag the average down.` : ''}${D.distributors ? `<br>
+      <b>Distributor figures</b> — from the SKU-wise sales report, which carries distributor, beat and shop
+      name per order line. The main order dump has no distributor column, which is why this lives on its own
+      tab against its own totals rather than being folded into the headline numbers.<br>
+      <b>Reordered</b> — an outlet with more than one separate billed visit inside the window.` : ''}
     </div></section>`;
 
   h += `<section><div class="shead"><h2>To make V2 materially better</h2></div>
     <div class="card"><div class="bars">
-      ${['Export the Employee T/A Report so target vs achievement can be built',
+      ${[(D.hierarchy || D.distributors)
+           ? 'Re-pull the three Product Performance flexible reports with the position filter cleared, so Assortment, Distributors and the manager scorecard cover the whole field force'
+           : 'Export the Product Performance flexible reports for SKU distribution and distributor analysis',
+         'Export the Employee T/A Report so target vs achievement can be built',
          'Tag the '+cm(q.outlets_untagged)+' untagged outlets and add Physio and Clinic as shop types if those are real channels',
          'Turn on journey planning so coverage can be measured against a plan',
+         'Add a must-sell SKU list per outlet type, so assortment can be scored against a target range instead of only described',
          'Populate ProductDivision, or confirm Primary Category is the intended grouping',
          'Decide whether doctor visits should be scored on order booking at all',
          'Confirm whether MT should live in FieldAssist or stay in another system'
@@ -596,37 +956,6 @@ function tabNotes(){
     </div></div></section>`;
   return h;
 }
-
-/* ---------------- rep table (filter + sort) ---------------- */
-function renderUsers(){
-  const zsel = document.getElementById('uz'), q = document.getElementById('uq');
-  if (!zsel) return;
-  const z = zsel.value, term = (q.value||'').toLowerCase();
-  let rows = D.users.filter(r => (!z || r.zone === z) && (!term || r.user.toLowerCase().includes(term)));
-  rows = rows.slice().sort((a,b) => {
-    const v = (b[uSort.key] ?? 0) - (a[uSort.key] ?? 0);
-    return uSort.dir === 'desc' ? v : -v;
-  });
-  document.getElementById('ucount').textContent = rows.length + ' shown';
-  document.getElementById('utable').innerHTML = table(
-    [{t:'Rep',nm:1,sort:false},{t:'Zone',sort:false},{t:'Level',sort:false},
-     {t:'Visits',n:1},{t:'Orders',n:1},{t:'Conv.',n:1},{t:'Net sales',n:1},
-     {t:'Days',n:1},{t:'Visits/day',n:1},{t:'Sales/day',n:1},{t:'Outlets',n:1}],
-    rows.map(r => [esc(r.user), r.zone, String(r.level).replace('Position',''),
-      cm(r.tc), cm(r.pc),
-      `<span class="pill ${r.conv>=18?'g':r.conv>=11?'w':'l'}">${pc(r.conv)}</span>`,
-      '₹'+inr(r.net), r.days, r.vpd, '₹'+cm(r.spd), cm(r.outlets)]), 'utbl');
-  const keys = [null,null,null,'tc','pc','conv','net','days','vpd','spd','outlets'];
-  document.querySelectorAll('#utbl th').forEach((th,i) => {
-    if (!keys[i]) { th.classList.remove('sortable'); return; }
-    th.onclick = () => {
-      if (uSort.key === keys[i]) uSort.dir = uSort.dir === 'desc' ? 'asc' : 'desc';
-      else { uSort.key = keys[i]; uSort.dir = 'desc'; }
-      renderUsers();
-    };
-  });
-}
-let uSort = {key:'net', dir:'desc'};
 
 /* ---------------- boot ---------------- */
 document.getElementById('scope').textContent = D.kpis.quarter + ' · General trade';
@@ -650,12 +979,9 @@ function show(id){
     nav.children[i].setAttribute('aria-selected', on);
     const p = document.getElementById('p-'+tid);
     p.hidden = !on;
-    if (on && !built[tid]) { p.innerHTML = fn(); built[tid] = 1;
-      if (tid === 'conversion'){
-        document.getElementById('uz').onchange = renderUsers;
-        document.getElementById('uq').oninput = renderUsers;
-        renderUsers();
-      }
+    if (on && !built[tid]) {
+      p.innerHTML = fn(); built[tid] = 1;
+      Object.keys(FT).forEach(ftableWire);
     }
   });
   window.scrollTo({top:0, behavior:'instant'});
