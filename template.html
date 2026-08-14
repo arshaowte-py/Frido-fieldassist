@@ -103,7 +103,17 @@ a{color:inherit}
 :root{--side-w:236px; --rail-w:64px}
 :root[data-side="rail"]{--side-w:var(--rail-w)}
 .shell{margin-left:var(--side-w);transition:margin-left .18s ease;min-width:0}
-main{padding:26px 26px 70px;max-width:1280px}
+main{padding:18px 26px 70px;max-width:1280px}
+
+/* ---------- page header ----------
+   The sidebar names the product; this names the view. It matters most on a deep
+   link, where the recipient arrives at a section with no idea which one it is. */
+.phead{padding:26px 26px 0;max-width:1280px}
+.phead .eyebrow{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
+.phead h1{font-size:26px;letter-spacing:-.03em;font-weight:800;line-height:1.15}
+.phead .lede{margin:7px 0 0;font-size:14.5px;color:var(--muted);max-width:74ch;line-height:1.5}
+.phead::after{content:"";display:block;height:1px;background:var(--rule);margin-top:17px}
 footer{padding:20px 26px 40px;max-width:1280px}
 .skip{position:absolute;left:-9999px;top:0;background:var(--card);color:var(--ink);
   padding:10px 14px;border:1px solid var(--rule);border-radius:0 0 6px 0;z-index:80}
@@ -119,7 +129,8 @@ footer{padding:20px 26px 40px;max-width:1280px}
 .side-head{display:flex;align-items:center;gap:11px;padding:16px 14px 14px;
   border-bottom:1px solid var(--rule);min-height:62px}
 .side-title{min-width:0;flex:1;overflow:hidden}
-.side-head h1{font-size:16px;letter-spacing:-.02em;font-weight:800;white-space:nowrap;
+.side-head .wordmark{display:block;font-family:var(--disp);font-size:16px;
+  letter-spacing:-.02em;font-weight:800;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .side-head .sub{display:block;font-family:var(--mono);font-size:9.5px;color:var(--muted);
   text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;margin-top:2px;
@@ -183,6 +194,8 @@ nav button:focus-visible{outline:2px solid var(--brand-warm);outline-offset:-2px
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:46;border:0}
 @media(max-width:860px){
   :root{--side-w:0px}
+  .phead{padding:18px 16px 0}
+  .phead h1{font-size:21px}
   .topbar{display:flex;align-items:center;gap:11px;padding:10px 14px;position:sticky;top:0;z-index:44;
     background:var(--card);border-bottom:1px solid var(--rule)}
   .topbar b{font-family:var(--disp);font-size:15px;font-weight:800;letter-spacing:-.02em}
@@ -370,7 +383,7 @@ footer{border-top:1px solid var(--rule);padding:20px 0 40px;font-size:12.5px;col
   <div class="side-head">
     <span class="mark" aria-hidden="true">f</span>
     <div class="side-title">
-      <h1>Frido GT</h1>
+      <span class="wordmark">Frido GT</span>
       <span class="sub" id="scope"></span>
     </div>
     <button class="icon-btn side-collapse" id="collapseBtn" type="button"
@@ -392,6 +405,7 @@ footer{border-top:1px solid var(--rule);padding:20px 0 40px;font-size:12.5px;col
 </aside>
 
 <div class="shell">
+  <header class="phead" id="phead"></header>
   <main id="main" tabindex="-1"></main>
   <footer>
     <div>Built from FieldAssist exports — Secondary Order Dump, Outlet Dump GeoHierarchy, Employee Productivity, Attendance, Beat Visit Coverage, and the Users and Beats masters. Figures cover general trade only.</div>
@@ -733,6 +747,20 @@ const TABS = [
    button's title and aria-label. */
 const ICON = (d, extra) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
   stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}${extra||''}</svg>`;
+/* One line per section saying what it answers. Written as the question a sales
+   lead arrives with, not a restatement of the section name. */
+const LEDE = {
+  overview:     'Where the quarter landed, and what is holding it back.',
+  people:       'Who is on the roll, who is actually working, and how the field force is shaped.',
+  conversion:   'Why visits do and do not turn into orders.',
+  coverage:     'How much of the outlet base the field force is genuinely reaching.',
+  category:     'Which categories sell in which zones, and where they are missing.',
+  assortment:   'How wide the range goes into each outlet, and which SKUs are stalling.',
+  distributors: 'Value and reach by distributor, and the beats that billed nothing.',
+  outlets:      'Outlets that bought and then went quiet — the call list, biggest value first.',
+  notes:        'What this data can and cannot answer, and what would fix it.',
+};
+
 const TAB_ICON = {
   overview:    ICON('<rect x="3.2" y="3.2" width="7.2" height="7.2" rx="1.6"/><rect x="13.6" y="3.2" width="7.2" height="7.2" rx="1.6"/><rect x="3.2" y="13.6" width="7.2" height="7.2" rx="1.6"/><rect x="13.6" y="13.6" width="7.2" height="7.2" rx="1.6"/>'),
   people:      ICON('<circle cx="9" cy="8" r="3.2"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M16.4 5.2a3.2 3.2 0 0 1 0 5.9"/><path d="M18 14.4a6.2 6.2 0 0 1 3.2 5.6"/>'),
@@ -1489,11 +1517,22 @@ nav.addEventListener('keydown', e => {
   show(TABS[next][0]);
 });
 
+const phead = document.getElementById('phead');
+function pageHead(id, label){
+  phead.innerHTML =
+    `<span class="eyebrow">Frido GT Field Intelligence · ${esc(D.kpis.quarter)} · General trade</span>
+     <h1>${esc(label)}</h1>
+     ${LEDE[id] ? `<p class="lede">${esc(LEDE[id])}</p>` : ''}`;
+  document.title = `${label} · Frido GT Field Intelligence`;
+}
+
 const built = {};
 let CURRENT_TAB = TABS[0][0];
 function show(id, opts){
   if (!TABS.some(t => t[0] === id)) id = TABS[0][0];
   CURRENT_TAB = id;
+  const label = (TABS.find(t => t[0] === id) || [])[1] || '';
+  pageHead(id, label);
   TABS.forEach(([tid,,fn], i) => {
     const on = tid === id;
     nav.children[i].setAttribute('aria-selected', on);
