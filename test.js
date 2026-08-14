@@ -107,5 +107,21 @@ setTimeout(()=>{
     console.log('  hashreset ok — filter absent from the hash is released');
   }
 
+  // ---- page header ----
+  // every section must name itself; a deep-linked view with no title is the bug
+  const seen = new Set();
+  [...d.querySelectorAll('nav button')].forEach((t,i)=>{
+    t.click();
+    const h = d.querySelector('#phead h1'), lede = d.querySelector('#phead .lede');
+    if (!h || !h.textContent.trim()) { errs.push(`no page heading on tab ${i+1}`); return; }
+    if (h.textContent.trim() !== t.textContent.trim())
+      errs.push(`heading "${h.textContent.trim()}" != section "${t.textContent.trim()}"`);
+    if (!lede || !lede.textContent.trim()) errs.push(`no lede on "${h.textContent.trim()}"`);
+    seen.add(h.textContent.trim());
+  });
+  if (d.querySelectorAll('h1').length !== 1)
+    errs.push(`${d.querySelectorAll('h1').length} h1 elements, expected exactly 1`);
+  console.log(`  heading  ${seen.size} sections titled, 1 h1 in document`);
+
   console.log(errs.length? '\nISSUES:\n'+errs.join('\n') : '\nno issues');
 },400);
