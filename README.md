@@ -51,6 +51,15 @@ PERIODS = ["April", "May", "June", "July", "August"]
 
 ## Reading the dashboard
 
+**Navigation.** Sections live in a left sidebar, one icon and label each. It
+collapses to a 64px icon rail via the chevron in its header, and that preference
+is remembered in `frido-side` — the wide tables (Category × Region, the churn
+list) get the width back when it is collapsed. Below 860px the sidebar becomes an
+off-canvas drawer behind a hamburger in a slim top bar; the drawer closes on
+selection, on Escape, on the scrim, and when the window grows back to desktop
+width. It is a real tablist: up/down arrows move between sections, Home and End
+jump the ends, and only the selected section is in the tab order.
+
 **Trend arrows.** The Overview KPIs carry a month-on-month delta. A FieldAssist pull
 almost always ends mid-month — this one stops on 13 August — so trending the final
 month against a full one reads as a collapse that never happened. Short months are

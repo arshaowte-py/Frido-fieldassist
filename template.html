@@ -94,39 +94,81 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);
 h1,h2,h3{font-family:var(--disp);font-weight:700;margin:0;letter-spacing:-.018em}
 a{color:inherit}
 .mono{font-family:var(--mono)}
-.wrap{max-width:1280px;margin:0 auto;padding:0 22px}
 
-/* ---------- masthead ---------- */
-header{border-bottom:1px solid var(--rule);background:var(--card);position:sticky;top:0;z-index:40}
-/* the brand hairline: Frido green running the width of the masthead */
-header::before{content:"";display:block;height:3px;
-  background:linear-gradient(90deg,var(--brand) 0%,var(--brand) 38%,var(--brand-warm) 100%)}
-.mast{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 0 12px}
-.mast h1{font-size:20px;letter-spacing:-.025em;font-weight:800}
-.mast .sub{font-family:var(--mono);font-size:11px;color:var(--muted);
-  text-transform:uppercase;letter-spacing:.09em}
-.mast .right{margin-left:auto;display:flex;align-items:center;gap:12px;
-  font-family:var(--mono);font-size:11px;color:var(--faint)}
+/* ---------- layout ----------
+   Sidebar is fixed and the content shell is offset by its width, so the long
+   tables scroll under their own steam without dragging the nav with them. The
+   width lives in one variable because the rail, the drawer and the content
+   offset must always agree. */
+:root{--side-w:236px; --rail-w:64px}
+:root[data-side="rail"]{--side-w:var(--rail-w)}
+.shell{margin-left:var(--side-w);transition:margin-left .18s ease;min-width:0}
+main{padding:26px 26px 70px;max-width:1280px}
+footer{padding:20px 26px 40px;max-width:1280px}
+.skip{position:absolute;left:-9999px;top:0;background:var(--card);color:var(--ink);
+  padding:10px 14px;border:1px solid var(--rule);border-radius:0 0 6px 0;z-index:80}
+.skip:focus{left:0}
+
+/* ---------- sidebar ---------- */
+.side{position:fixed;inset:0 auto 0 0;width:var(--side-w);z-index:50;
+  background:var(--card);border-right:1px solid var(--rule);
+  display:flex;flex-direction:column;transition:width .18s ease,transform .18s ease}
+/* the brand hairline, now running down the sidebar's edge */
+.side::after{content:"";position:absolute;inset:0 -1px 0 auto;width:3px;
+  background:linear-gradient(180deg,var(--brand) 0%,var(--brand) 38%,var(--brand-warm) 100%)}
+.side-head{display:flex;align-items:center;gap:11px;padding:16px 14px 14px;
+  border-bottom:1px solid var(--rule);min-height:62px}
+.side-title{min-width:0;flex:1;overflow:hidden}
+.side-head h1{font-size:16px;letter-spacing:-.02em;font-weight:800;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.side-head .sub{display:block;font-family:var(--mono);font-size:9.5px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis}
 /* brand mark — the Frido "f" in a rounded tile */
 .mark{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;
   background:var(--brand);color:#fff;font-family:var(--disp);font-weight:800;
   font-size:17px;line-height:1;letter-spacing:-.04em;box-shadow:var(--shadow)}
-nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
-nav::-webkit-scrollbar{display:none}
-nav button{font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;
-  background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);
-  padding:9px 13px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s}
-nav button:hover{color:var(--ink)}
-nav button[aria-selected="true"]{color:var(--ink);border-color:var(--brand)}
+
+nav{display:flex;flex-direction:column;gap:1px;padding:10px 8px;overflow-y:auto;flex:1;
+  scrollbar-width:thin}
+nav button{display:flex;align-items:center;gap:11px;width:100%;text-align:left;
+  font-family:var(--body);font-size:13.5px;font-weight:500;letter-spacing:-.005em;
+  background:none;border:0;border-radius:8px;color:var(--muted);
+  padding:9px 10px;cursor:pointer;white-space:nowrap;position:relative;
+  transition:color .13s,background .13s}
+nav button svg{width:18px;height:18px;flex:none}
+nav button:hover{color:var(--ink);background:var(--rule-soft)}
+nav button[aria-selected="true"]{color:var(--ink);background:var(--gain-b);font-weight:600}
+nav button[aria-selected="true"]::before{content:"";position:absolute;left:-8px;top:7px;bottom:7px;
+  width:3px;border-radius:0 3px 3px 0;background:var(--brand)}
+nav button[aria-selected="true"] svg{color:var(--brand)}
 nav button:focus-visible{outline:2px solid var(--brand-warm);outline-offset:-2px}
 
-/* ---------- theme toggle ---------- */
-.theme-btn{display:grid;place-items:center;width:32px;height:32px;flex:none;cursor:pointer;
+.side-foot{display:flex;align-items:center;gap:10px;padding:11px 14px;
+  border-top:1px solid var(--rule)}
+.side-foot-t{font-family:var(--mono);font-size:9.5px;color:var(--faint);
+  text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;overflow:hidden}
+
+/* collapsed rail: labels and chrome fold away, icons stay centred */
+.side-collapse svg{transition:transform .18s ease}
+:root[data-side="rail"] .side-title,
+:root[data-side="rail"] .side-foot-t{display:none}
+:root[data-side="rail"] .side-head{justify-content:center;padding:16px 0 14px;gap:0}
+:root[data-side="rail"] .side-collapse{position:absolute;right:-13px;top:20px;z-index:2;
+  background:var(--card);border:1px solid var(--rule)}
+:root[data-side="rail"] .side-collapse svg{transform:rotate(180deg)}
+:root[data-side="rail"] nav button{justify-content:center;padding:10px 0}
+:root[data-side="rail"] nav button .lbl{display:none}
+:root[data-side="rail"] .side-foot{justify-content:center;padding:11px 0}
+
+/* ---------- buttons ---------- */
+.icon-btn{display:grid;place-items:center;width:32px;height:32px;flex:none;cursor:pointer;
   background:var(--card);border:1px solid var(--rule);border-radius:8px;color:var(--muted);
   padding:0;transition:color .15s,border-color .15s,background .15s}
-.theme-btn:hover{color:var(--ink);border-color:var(--faint)}
-.theme-btn:focus-visible{outline:2px solid var(--brand-warm);outline-offset:2px}
-.theme-btn svg{width:17px;height:17px;display:block}
+.icon-btn:hover{color:var(--ink);border-color:var(--faint)}
+.icon-btn:focus-visible{outline:2px solid var(--brand-warm);outline-offset:2px}
+.icon-btn svg{width:17px;height:17px;display:block}
+.side-collapse{border-color:transparent;background:none}
 /* one icon per mode — the sun shows in dark mode (click to go light) and vice versa */
 .theme-btn .i-moon{display:block} .theme-btn .i-sun{display:none}
 :root[data-theme="dark"] .theme-btn .i-moon{display:none}
@@ -136,7 +178,31 @@ nav button:focus-visible{outline:2px solid var(--brand-warm);outline-offset:-2px
   :root:where(:not([data-theme="light"])) .theme-btn .i-sun{display:block}
 }
 
-main{padding:26px 0 70px}
+/* ---------- narrow: sidebar becomes a drawer ---------- */
+.topbar{display:none}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:46;border:0}
+@media(max-width:860px){
+  :root{--side-w:0px}
+  .topbar{display:flex;align-items:center;gap:11px;padding:10px 14px;position:sticky;top:0;z-index:44;
+    background:var(--card);border-bottom:1px solid var(--rule)}
+  .topbar b{font-family:var(--disp);font-size:15px;font-weight:800;letter-spacing:-.02em}
+  .topbar-sp{margin-left:auto}
+  .shell{margin-left:0}
+  main{padding:20px 16px 60px}
+  footer{padding:18px 16px 36px}
+  /* off-canvas until opened; the rail state is a desktop affordance only */
+  .side{width:264px;transform:translateX(-100%);box-shadow:none}
+  :root[data-drawer="open"] .side{transform:none;box-shadow:0 0 40px rgba(0,0,0,.25)}
+  :root[data-side="rail"] .side{width:264px}
+  :root[data-side="rail"] .side-title,
+  :root[data-side="rail"] .side-foot-t{display:block}
+  :root[data-side="rail"] .side-head{justify-content:flex-start;padding:16px 14px 14px;gap:11px}
+  :root[data-side="rail"] nav button{justify-content:flex-start;padding:9px 10px}
+  :root[data-side="rail"] nav button .lbl{display:inline}
+  :root[data-side="rail"] .side-foot{justify-content:flex-start;padding:11px 14px}
+  .side-collapse{display:none}
+}
+@media(min-width:861px){ .scrim{display:none} }
 .panel[hidden]{display:none}
 section{margin-bottom:34px}
 .shead{display:flex;align-items:baseline;gap:12px;margin-bottom:13px;
@@ -283,36 +349,66 @@ footer{border-top:1px solid var(--rule);padding:20px 0 40px;font-size:12.5px;col
 </head>
 <body>
 
-<header>
-  <div class="wrap">
-    <div class="mast">
-      <span class="mark" aria-hidden="true">f</span>
-      <h1>Frido GT Field Intelligence</h1>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- slim bar, only present below the sidebar breakpoint -->
+<div class="topbar">
+  <button class="icon-btn" id="drawerBtn" type="button" aria-label="Open sections"
+          aria-expanded="false" aria-controls="side">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+         stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+  <span class="mark" aria-hidden="true">f</span>
+  <b>Frido GT</b>
+  <span class="topbar-sp"></span>
+  <button class="icon-btn theme-btn" id="themeBtnTop" type="button"
+          aria-label="Switch between light and dark theme"></button>
+</div>
+<div class="scrim" id="scrim" hidden></div>
+
+<aside class="side" id="side">
+  <div class="side-head">
+    <span class="mark" aria-hidden="true">f</span>
+    <div class="side-title">
+      <h1>Frido GT</h1>
       <span class="sub" id="scope"></span>
-      <div class="right">
-        <button class="theme-btn" id="themeBtn" type="button"
-                aria-label="Switch between light and dark theme">
-          <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
-          </svg>
-          <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="4.2"/>
-            <path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/>
-          </svg>
-        </button>
-      </div>
     </div>
-    <nav role="tablist" id="nav"></nav>
+    <button class="icon-btn side-collapse" id="collapseBtn" type="button"
+            aria-label="Collapse the sidebar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 5.5 8.5 12l6.5 6.5"/>
+      </svg>
+    </button>
   </div>
-</header>
 
-<main class="wrap" id="main"></main>
+  <nav role="tablist" aria-orientation="vertical" aria-label="Dashboard sections" id="nav"></nav>
 
-<footer class="wrap">
-  <div>Built from FieldAssist exports — Secondary Order Dump, Outlet Dump GeoHierarchy, Employee Productivity, Attendance, Beat Visit Coverage, and the Users and Beats masters. Figures cover general trade only.</div>
-</footer>
+  <div class="side-foot">
+    <button class="icon-btn theme-btn" id="themeBtn" type="button"
+            aria-label="Switch between light and dark theme"></button>
+    <span class="side-foot-t" id="asof"></span>
+  </div>
+</aside>
+
+<div class="shell">
+  <main id="main" tabindex="-1"></main>
+  <footer>
+    <div>Built from FieldAssist exports — Secondary Order Dump, Outlet Dump GeoHierarchy, Employee Productivity, Attendance, Beat Visit Coverage, and the Users and Beats masters. Figures cover general trade only.</div>
+  </footer>
+</div>
+
+<template id="themeIcons">
+  <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+  </svg>
+  <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/>
+  </svg>
+</template>
 
 <script>
 const D = /*__DATA__*/;
@@ -630,6 +726,24 @@ const TABS = [
   ['outlets','Outlets at risk', tabRFM, 'rfm'],
   ['notes','Data notes', tabNotes],
 ].filter(t => !t[3] || D[t[3]]);
+
+/* One icon per section, keyed by tab id. Same 24-grid, 1.7 stroke and round caps
+   as the theme toggle, so the rail reads as one set. They are decorative — the
+   label carries the meaning, and in the collapsed rail the label survives as the
+   button's title and aria-label. */
+const ICON = (d, extra) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}${extra||''}</svg>`;
+const TAB_ICON = {
+  overview:    ICON('<rect x="3.2" y="3.2" width="7.2" height="7.2" rx="1.6"/><rect x="13.6" y="3.2" width="7.2" height="7.2" rx="1.6"/><rect x="3.2" y="13.6" width="7.2" height="7.2" rx="1.6"/><rect x="13.6" y="13.6" width="7.2" height="7.2" rx="1.6"/>'),
+  people:      ICON('<circle cx="9" cy="8" r="3.2"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M16.4 5.2a3.2 3.2 0 0 1 0 5.9"/><path d="M18 14.4a6.2 6.2 0 0 1 3.2 5.6"/>'),
+  conversion:  ICON('<path d="M3.2 4.6h17.6l-6.9 8.1V20l-3.8-2.4v-4.9z"/>'),
+  coverage:    ICON('<path d="M12 21s6.8-5.6 6.8-11a6.8 6.8 0 1 0-13.6 0c0 5.4 6.8 11 6.8 11z"/><circle cx="12" cy="10" r="2.4"/>'),
+  category:    ICON('<rect x="3.2" y="3.6" width="17.6" height="16.8" rx="2"/><path d="M3.2 9.2h17.6M9.4 9.2v11.2M15.2 9.2v11.2"/>'),
+  assortment:  ICON('<path d="M12 2.9 21 7.4 12 12 3 7.4z"/><path d="m3 12.2 9 4.5 9-4.5"/><path d="m3 16.8 9 4.5 9-4.5"/>'),
+  distributors:ICON('<path d="M2.8 6.4h10.4v9.2H2.8z"/><path d="M13.2 9.6h4l3 3.2v2.8h-7z"/><circle cx="6.6" cy="18" r="1.9"/><circle cx="17.2" cy="18" r="1.9"/>'),
+  outlets:     ICON('<path d="M12 3.6 22 20H2z"/><path d="M12 9.6v4.6"/><path d="M12 17.2h.01"/>'),
+  notes:       ICON('<path d="M13.6 2.9H6.4a1.8 1.8 0 0 0-1.8 1.8v14.6a1.8 1.8 0 0 0 1.8 1.8h11.2a1.8 1.8 0 0 0 1.8-1.8V8.5z"/><path d="M13.6 2.9V8.5h5.6"/><path d="M8.6 13.4h6.8M8.6 17h4.4"/>'),
+};
 
 /* ---------------- outlets at risk (RFM) ---------------- */
 const SEG_ROLE = {'Active':'gain', 'New':'cool', 'At risk':'warn', 'Churned':'loss'};
@@ -1342,18 +1456,37 @@ function tabNotes(){
 }
 
 /* ---------------- boot ---------------- */
-document.getElementById('scope').textContent = D.kpis.quarter + ' · General trade';
+document.getElementById('scope').textContent = D.kpis.quarter;
 
 const nav = document.getElementById('nav'), main = document.getElementById('main');
 TABS.forEach(([id, label], i) => {
-  const b = el('button', null, label);
+  const b = el('button', null, (TAB_ICON[id]||'') + `<span class="lbl">${esc(label)}</span>`);
   b.setAttribute('role','tab'); b.setAttribute('aria-selected', i===0);
   b.setAttribute('aria-controls', 'p-'+id);
+  /* the label is hidden in the collapsed rail, so keep it reachable both ways */
+  b.setAttribute('title', label);
+  b.setAttribute('aria-label', label);
+  b.tabIndex = i === 0 ? 0 : -1;
   b.onclick = () => show(id);
   nav.appendChild(b);
   const p = el('div', 'panel'); p.id = 'p-'+id; p.setAttribute('role','tabpanel');
+  p.setAttribute('aria-label', label);
   if (i) p.hidden = true;
   main.appendChild(p);
+});
+
+/* A vertical tablist is driven with up/down; home/end jump the ends. Without
+   this the sidebar would be nine separate tab stops instead of one. */
+nav.addEventListener('keydown', e => {
+  const keys = {ArrowDown:1, ArrowUp:-1, Home:'first', End:'last'};
+  if (!(e.key in keys)) return;
+  e.preventDefault();
+  const btns = [...nav.children], at = btns.indexOf(document.activeElement);
+  const step = keys[e.key];
+  const next = step === 'first' ? 0 : step === 'last' ? btns.length-1
+             : (at + step + btns.length) % btns.length;
+  btns[next].focus();
+  show(TABS[next][0]);
 });
 
 const built = {};
@@ -1364,6 +1497,7 @@ function show(id, opts){
   TABS.forEach(([tid,,fn], i) => {
     const on = tid === id;
     nav.children[i].setAttribute('aria-selected', on);
+    nav.children[i].tabIndex = on ? 0 : -1;
     const p = document.getElementById('p-'+tid);
     p.hidden = !on;
     if (on && !built[tid]) {
@@ -1398,27 +1532,83 @@ window.addEventListener('hashchange', () => { if (!HASH_LOCK) applyHash({keepScr
 /* ---------------- theme toggle ----------------
    No stored choice means "follow the OS", so the first click flips away from
    whatever the OS is currently showing rather than from a hardcoded default.
-   Every colour is a CSS custom property, so the swap needs no re-render.      */
+   Every colour is a CSS custom property, so the swap needs no re-render.
+   Two buttons exist — sidebar and narrow-screen top bar — and only one is ever
+   visible, but both are kept in sync so neither can report a stale state.    */
 (function(){
-  const root = document.documentElement, btn = document.getElementById('themeBtn');
-  if (!btn) return;
+  const root = document.documentElement;
+  const btns = [...document.querySelectorAll('.theme-btn')];
+  if (!btns.length) return;
+  const icons = document.getElementById('themeIcons');
+  if (icons) btns.forEach(b => b.appendChild(icons.content.cloneNode(true)));
   /* matchMedia is missing in some headless/embedded engines; without this guard
      an unimplemented API takes the whole toggle down rather than degrading it */
   const osDark = window.matchMedia
     ? window.matchMedia('(prefers-color-scheme: dark)')
     : {matches:false, addEventListener(){}};
   const effective = () => root.getAttribute('data-theme') || (osDark.matches ? 'dark' : 'light');
-  const label = () => btn.setAttribute('aria-label',
-    effective() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-  btn.onclick = () => {
+  const label = () => btns.forEach(b => b.setAttribute('aria-label',
+    effective() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'));
+  btns.forEach(b => b.onclick = () => {
     const next = effective() === 'dark' ? 'light' : 'dark';
     root.setAttribute('data-theme', next);
     try { localStorage.setItem('frido-theme', next); } catch(e){}
     label();
-  };
+  });
   /* while the viewer is still on "follow the OS", track OS changes live */
   osDark.addEventListener('change', label);
   label();
+})();
+
+/* ---------------- sidebar: rail collapse and narrow-screen drawer ----------------
+   Two separate states on purpose. "rail" is a desktop preference and is
+   remembered; "drawer" is a transient narrow-screen overlay and is not, because
+   a drawer that reopened itself on every load would be a bug, not a memory.   */
+(function(){
+  const root = document.documentElement;
+  const side = document.getElementById('side');
+  const collapse = document.getElementById('collapseBtn');
+  const drawerBtn = document.getElementById('drawerBtn');
+  const scrim = document.getElementById('scrim');
+
+  try {
+    if (localStorage.getItem('frido-side') === 'rail') root.setAttribute('data-side','rail');
+  } catch(e){}
+  const railed = () => root.getAttribute('data-side') === 'rail';
+  const markCollapse = () => collapse && collapse.setAttribute('aria-label',
+    railed() ? 'Expand the sidebar' : 'Collapse the sidebar');
+  if (collapse) collapse.onclick = () => {
+    const next = railed() ? '' : 'rail';
+    if (next) root.setAttribute('data-side', next); else root.removeAttribute('data-side');
+    try { localStorage.setItem('frido-side', next || 'full'); } catch(e){}
+    markCollapse();
+  };
+  markCollapse();
+
+  function drawer(open){
+    if (open) root.setAttribute('data-drawer','open'); else root.removeAttribute('data-drawer');
+    if (scrim) scrim.hidden = !open;
+    if (drawerBtn) drawerBtn.setAttribute('aria-expanded', String(!!open));
+    if (open && side) side.querySelector('nav button[aria-selected="true"]')?.focus();
+  }
+  if (drawerBtn) drawerBtn.onclick = () => drawer(root.getAttribute('data-drawer') !== 'open');
+  if (scrim) scrim.onclick = () => drawer(false);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') drawer(false); });
+  /* picking a section is the end of the drawer's job */
+  if (side) side.addEventListener('click', e => {
+    if (e.target.closest('nav button')) drawer(false);
+  });
+  /* leaving narrow width must not strand the overlay state */
+  if (window.matchMedia) {
+    const wide = window.matchMedia('(min-width:861px)');
+    wide.addEventListener('change', e => { if (e.matches) drawer(false); });
+  }
+})();
+
+/* the sidebar footer states the window the data covers */
+(function(){
+  const el = document.getElementById('asof');
+  if (el) el.textContent = (D.rfm && D.rfm.as_of) ? 'to ' + D.rfm.as_of : D.kpis.quarter;
 })();
 </script>
 </body>
