@@ -109,10 +109,11 @@ Re-pulling the export with the position filter cleared fixes it.
 ## Colour and theme
 
 Every colour on the page is a CSS custom property, so light/dark is a token swap
-with no re-render. The toggle sits in the masthead; it writes `frido-theme` to
-localStorage and stamps `data-theme` on `<html>`. No stored value means "follow the
-OS", and an inline script in `<head>` applies the choice before first paint so the
-page never flashes the wrong mode.
+with no re-render. The toggle sits in the sidebar footer, and again in the
+narrow-screen top bar; both write `frido-theme` to localStorage and stamp
+`data-theme` on `<html>`. No stored value means "follow the OS", and an inline
+script in `<head>` applies the choice before first paint so the page never
+flashes the wrong mode.
 
 **To match brand colour, edit only the `FRIDO BRAND` block** at the top of
 `template.html` — three hexes (`--brand-ink`, `--brand`, `--brand-warm`). The
